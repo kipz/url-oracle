@@ -13,6 +13,9 @@ for arg in "$@"; do
   fi
 done
 
+echo "Command: $COMMAND"
+echo "Filtered args: $filtered_args"
+
 case "${COMMAND}" in
   "generate_attestation")
     exec /app/generate-attestation "$filtered_args"
