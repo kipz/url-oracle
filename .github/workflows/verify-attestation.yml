@@ -16,7 +16,7 @@ jobs:
     - name: Extract commit SHA from attestation
       id: extract_commit_sha
       run: |
-        COMMIT_SHA=$(jq -r 'payload.commit_sha' attestation.json)
+        COMMIT_SHA=$(jq -r '.payload.commit_sha' attestation.json)
         echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
     - name: Checkout repository at commit SHA
       uses: actions/checkout@v4
