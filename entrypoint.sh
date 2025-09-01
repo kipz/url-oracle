@@ -22,9 +22,11 @@ echo "Filtered args: $filtered_args"
 
 case "${COMMAND}" in
   "generate_attestation")
+    # shellcheck disable=SC2086
     exec /app/generate-attestation $filtered_args
     ;;
   "verify_attestation")
+    # shellcheck disable=SC2086
     exec /app/verify-attestation $filtered_args
     ;;
   *)
