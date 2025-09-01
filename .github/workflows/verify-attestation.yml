@@ -10,11 +10,11 @@ jobs:
 
     - name: Verify attestation
       id: verification
-      uses: kipz/url-oracle@abdbf4d1c3a182c564cb45cefaa61e560b43acac
+      uses: kipz/url-oracle@1cd41a73b2453b2f01f503e2239f474f973d6933
       with:
         command: verify_attestation
         attestation_file: "/github/workspace/attestation.json"
-        commit_sha: abdbf4d1c3a182c564cb45cefaa61e560b43acac
+        commit_sha: 1cd41a73b2453b2f01f503e2239f474f973d6933
 
     - name: Comment on commit (if possible)
       run: |
