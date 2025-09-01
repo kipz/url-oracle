@@ -9,7 +9,11 @@ shift
 filtered_args=""
 for arg in "$@"; do
   if [ -n "$arg" ] && [ "$arg" != '""' ] && [ "$arg" != "''" ]; then
-    filtered_args="$filtered_args $arg"
+    if [ -z "$filtered_args" ]; then
+      filtered_args="$arg"
+    else
+      filtered_args="$filtered_args $arg"
+    fi
   fi
 done
 
