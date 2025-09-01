@@ -7,6 +7,9 @@ on:
         description: 'URL to fetch and witness'
         required: true
         type: string
+    secrets:
+      token:
+        required: true
 
 jobs:
   create-attestation:
