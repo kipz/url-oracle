@@ -21,7 +21,9 @@ jobs:
     - name: Checkout repository at commit SHA
       uses: actions/checkout@v4
       with:
+        repository: kipz/url-oracle
         ref: ${{ env.COMMIT_SHA }}
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Verify attestation
       run: |
         go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json --commit-sha ${{ env.COMMIT_SHA }}
