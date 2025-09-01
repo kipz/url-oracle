@@ -24,7 +24,7 @@ The URL Oracle is implemented as a **Docker-based GitHub Action** that:
 
 ```yaml
 - name: Generate Attestation
-  uses: kipz/url-oracle@fba3ac874978bb5a2bb991dd8a1659ff69b6d575
+  uses: kipz/url-oracle@1b410f30a94578d533176de76b9326e345511325
   with:
     command: generate_attestation
     url: 'https://vstoken.actions.githubusercontent.com/.well-known/jwks'
@@ -41,7 +41,7 @@ Creates a new OpenPubkey attestation for the specified URL.
 
 ```yaml
 - name: Generate Attestation
-  uses: kipz/url-oracle@fba3ac874978bb5a2bb991dd8a1659ff69b6d575
+  uses: kipz/url-oracle@1b410f30a94578d533176de76b9326e345511325
   with:
     command: generate_attestation
     url: 'https://example.com/api/data'
@@ -54,7 +54,7 @@ Verifies the authenticity and integrity of an attestation.
 
 ```yaml
 - name: Verify Attestation
-  uses: kipz/url-oracle@fba3ac874978bb5a2bb991dd8a1659ff69b6d575
+  uses: kipz/url-oracle@1b410f30a94578d533176de76b9326e345511325
   with:
     command: verify_attestation
     attestation_file: 'attestation.json'
@@ -234,5 +234,5 @@ go build -o verify-attestation ./cmd/verify_attestation
 
 The latest version of the URL Oracle is available at commit SHA:
 ```
-fba3ac874978bb5a2bb991dd8a1659ff69b6d575
+1b410f30a94578d533176de76b9326e345511325
 ```
