@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"strings"
 
-	attest "github-oidc-oracle/attestation"
+	attest "url-oracle/attestation"
 
 	"github.com/openpubkey/openpubkey/providers"
 	"github.com/openpubkey/openpubkey/verifier"

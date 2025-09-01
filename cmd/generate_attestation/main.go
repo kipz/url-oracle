@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github-oidc-oracle/attestation"
 	"os"
 	"path/filepath"
+	"url-oracle/attestation"
 
 	"github.com/openpubkey/openpubkey/client"
 	"github.com/openpubkey/openpubkey/providers"

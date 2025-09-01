@@ -13,16 +13,20 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: attestation.json
-
-    - name: Verify attestation
-      id: verification
-      uses: kipz/url-oracle@0087c73870c17f60fd1cbbd1010a01eedc141b41
+    - name: Extract commit SHA from attestation
+      id: extract_commit_sha
+      run: |
+        COMMIT_SHA=$(jq -r 'payload.commit_sha' attestation.json)
+        echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
+    - name: Checkout repository at commit SHA
+      uses: actions/checkout@v4
       with:
-        command: verify_attestation
-        attestation_file: /github/workspace/attestation.json
-        commit_sha: 0087c73870c17f60fd1cbbd1010a01eedc141b41
+        ref: ${{ env.COMMIT_SHA }}
+    - name: Verify attestation
+      run: |
+        go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json --commit-sha ${{ env.COMMIT_SHA }}
 
     - name: Comment on commit (if possible)
       run: |
-        echo "🔍 Verification completed for commit 8e7535bfa0b3b77ce1afe1902d8ff1407cfcf8a8
+        echo "🔍 Verification completed for commit ${{ env.COMMIT_SHA }}"
         echo "📋 Summary: Attestation verified successfully"

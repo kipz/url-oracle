@@ -1,4 +1,4 @@
-module github-oidc-oracle
+module url-oracle
 
 go 1.23.7
 
