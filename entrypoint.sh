@@ -25,7 +25,7 @@ case "${COMMAND}" in
     ;;
   *)
     echo "Unknown command: ${COMMAND}"
-    echo "Available commands: generate_attestation, check_content, verify_attestation"
+    echo "Available commands: generate_attestation, verify_attestation"
     exit 1
     ;;
 esac
