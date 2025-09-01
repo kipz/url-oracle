@@ -22,9 +22,6 @@ bin/
 dist/
 build/
 
-# Generated binaries
-generate_attestation
-verify_attestation
 
 # Temporary files
 *.tmp

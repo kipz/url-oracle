@@ -1,163 +1,22 @@
 name: Verify Attestation
 
 on:
-  workflow_dispatch:
-    inputs:
-      commit_sha:
-        description: 'Commit SHA to verify attestation for'
-        required: true
-        type: string
-        default: 'main'
+  workflow_call:
 
 jobs:
   verify-attestation:
-    permissions:
-      contents: read
-      id-token: write
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout specific commit
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.inputs.commit_sha }}
-
-    - name: Setup Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-
-    - name: Install dependencies
-      run: go mod download
-
-    - name: Get commit information
-      id: commit-info
-      run: |
-        echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-        echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-    - name: Download attestation from release
-      id: download-attestation
-      run: |
-        echo "🔍 Looking for attestation release for commit ${{ steps.commit-info.outputs.sha }}..."
-        
-        # Get the short SHA for this commit
-        SHORT_SHA=$(git rev-parse --short HEAD)
-        echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
-        
-        # Try to download the attestation from the release
-        RELEASE_TAG="attestation-$SHORT_SHA"
-        ASSET_NAME="github-oidc-attestation.json"
-        
-        echo "📥 Downloading attestation from release $RELEASE_TAG..."
-        
-        # Create attestations directory
-        mkdir -p attestations
-        
-        # Use GitHub API to download the release asset
-        RELEASE_URL="https://api.github.com/repos/${{ github.repository }}/releases/tags/$RELEASE_TAG"
-        
-        echo "🔍 Release API URL: $RELEASE_URL"
-        echo "🔍 Looking for asset: $ASSET_NAME"
-        
-        # Get release info and find the asset
-        RELEASE_INFO=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "$RELEASE_URL")
-        
-        if [ $? -ne 0 ]; then
-          echo "❌ Failed to fetch release info from GitHub API"
-          exit 1
-        fi
-        
-        # Check if release exists
-        RELEASE_EXISTS=$(echo "$RELEASE_INFO" | jq -r '.id // empty')
-        if [ -z "$RELEASE_EXISTS" ]; then
-          echo "❌ Release not found: $RELEASE_TAG"
-          echo "📄 API Response: $RELEASE_INFO"
-          exit 1
-        fi
-        
-        # Find the asset and get its ID
-        ASSET_INFO=$(echo "$RELEASE_INFO" | jq -r '.assets[] | select(.name=="'$ASSET_NAME'") | {id: .id, name: .name, size: .size}')
-        
-        if [ -z "$ASSET_INFO" ] || [ "$ASSET_INFO" = "null" ]; then
-          echo "❌ Asset not found: $ASSET_NAME"
-          echo "📄 Available assets in release:"
-          echo "$RELEASE_INFO" | jq -r '.assets[] | "  - \(.name) (\(.size) bytes)"'
-          exit 1
-        fi
-        
-        ASSET_ID=$(echo "$ASSET_INFO" | jq -r '.id')
-        ASSET_SIZE=$(echo "$ASSET_INFO" | jq -r '.size')
-        
-        echo "✅ Found asset: $ASSET_NAME (ID: $ASSET_ID, Size: $ASSET_SIZE bytes)"
-        
-        # Use direct GitHub API download instead of browser download URL
-        ASSETS_URL="https://api.github.com/repos/${{ github.repository }}/releases/assets/$ASSET_ID"
-        
-        echo "🔍 Asset download URL: $ASSETS_URL"
-        
-        if [ -n "$ASSET_ID" ]; then
-          echo "📥 Downloading from: $ASSETS_URL"
-          
-          # Download with better error handling and redirect following
-          curl -L -f -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/octet-stream" \
-            -H "User-Agent: GitHub-Actions-Verify-Workflow" \
-            "$ASSETS_URL" -o "attestations/$ASSET_NAME"
-          
-          CURL_EXIT_CODE=$?
-          
-          # Verify the file was downloaded correctly
-          if [ -f "attestations/$ASSET_NAME" ] && [ $CURL_EXIT_CODE -eq 0 ]; then
-            FILE_SIZE=$(wc -c < "attestations/$ASSET_NAME")
-            echo "📁 File size: $FILE_SIZE bytes"
-            
-            # Check if file is suspiciously small (less than 100 bytes)
-            if [ $FILE_SIZE -lt 100 ]; then
-              echo "⚠️  Warning: File seems too small, checking content..."
-              echo "📄 First 200 characters: $(head -c 200 "attestations/$ASSET_NAME")"
-              
-              # Check if it's an HTML error page
-              if grep -q "<html\|<!DOCTYPE\|<title>" "attestations/$ASSET_NAME"; then
-                echo "❌ Downloaded HTML error page instead of JSON file"
-                echo "📄 Content preview: $(head -c 500 "attestations/$ASSET_NAME")"
-                exit 1
-              fi
-            else
-              echo "📄 First few characters: $(head -c 100 "attestations/$ASSET_NAME")"
-            fi
-            
-            echo "✅ Attestation downloaded successfully from release"
-            echo "attestation_exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ File download failed - curl exit code: $CURL_EXIT_CODE"
-            if [ -f "attestations/$ASSET_NAME" ]; then
-              echo "📄 Downloaded content (first 500 chars): $(head -c 500 "attestations/$ASSET_NAME")"
-            fi
-            
-            echo "❌ Download failed - no fallback method available"
-            exit 1
-          fi
-        else
-          echo "❌ No attestation release found for commit ${{ steps.commit-info.outputs.sha }}"
-          echo "❌ Release URL: $RELEASE_URL"
-          echo "❌ Asset name: $ASSET_NAME"
-          echo "attestation_exists=false" >> $GITHUB_OUTPUT
-          exit 1
-        fi
 
     - name: Verify attestation
       id: verification
-      run: |
-        echo "🔍 Verifying attestation for commit ${{ steps.commit-info.outputs.sha }}..."
-        
-        # Run verification using go run
-        go run ./cmd/verify_attestation \
-          --attestation-file attestations/github-oidc-attestation.json
-        
-        echo "✅ Attestation verification completed successfully"
+      uses: kipz/url-oracle@e80121d064f8f98df3f12f5c17fcc419dd0e9320
+      with:
+        command: verify_attestation
+        attestation_file: "/github/workspace/attestation.json"
+        commit_sha: e80121d064f8f98df3f12f5c17fcc419dd0e9320
 
     - name: Comment on commit (if possible)
       run: |
-        echo "🔍 Verification completed for commit ${{ steps.commit-info.outputs.short_sha }}"
+        echo "🔍 Verification completed for commit 8e7535bfa0b3b77ce1afe1902d8ff1407cfcf8a8
         echo "📋 Summary: Attestation verified successfully"
-        echo "📁 Artifacts: Available in workflow run artifacts"

@@ -1,0 +1,39 @@
+name: Create Attestation
+
+on:
+  workflow_call:
+    inputs:
+      url:
+        description: 'URL to fetch and witness'
+        required: true
+        type: string
+
+jobs:
+  create-attestation:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    
+    steps:
+    - name: Get current timestamp
+      id: timestamp
+      run: |
+        echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+    - name: Generate OpenPubkey attestation
+      id: attestation
+      uses: kipz/url-oracle@e80121d064f8f98df3f12f5c17fcc419dd0e9320
+      with:
+        command: generate_attestation
+        url: ${{ inputs.url }}
+        commit_sha: e80121d064f8f98df3f12f5c17fcc419dd0e9320
+        timestamp: ${{ steps.timestamp.outputs.timestamp }}
+        attestation_file: "/github/workspace/attestation.json"
+
+    - name: Upload attestation as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: attestation.json
+        path: attestation.json
+        retention-days: 30
