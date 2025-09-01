@@ -8,7 +8,7 @@ shift
 # Filter out empty arguments
 filtered_args=""
 for arg in "$@"; do
-  if [ -n "$arg" ]; then
+  if [ -n "$arg" ] && [ "$arg" != '""' ] && [ "$arg" != "''" ]; then
     filtered_args="$filtered_args $arg"
   fi
 done
