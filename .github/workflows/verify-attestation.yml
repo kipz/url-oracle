@@ -2,6 +2,9 @@ name: Verify Attestation
 
 on:
   workflow_call:
+    secrets:
+      token:
+        required: true
 
 jobs:
   verify-attestation:
@@ -23,7 +26,7 @@ jobs:
       with:
         repository: kipz/url-oracle
         ref: ${{ env.COMMIT_SHA }}
-        token: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.token }}
     - name: Verify attestation
       run: |
         go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json --commit-sha ${{ env.COMMIT_SHA }}
