@@ -9,6 +9,11 @@ jobs:
     permissions:
       id-token: write
     steps:
+    - name: Download attestation
+      uses: actions/download-artifact@v4
+      with:
+        name: attestation.json
+        path: /github/workspace/attestation.json
 
     - name: Verify attestation
       id: verification
