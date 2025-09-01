@@ -23,11 +23,11 @@ jobs:
 
     - name: Generate OpenPubkey attestation
       id: attestation
-      uses: kipz/url-oracle@6d49cfdbab7c408ff41b2ddceb1dea9342db0c19
+      uses: kipz/url-oracle@49906751becb6527e7e695e0f671b0870043b219
       with:
         command: generate_attestation
         url: ${{ inputs.url }}
-        commit_sha: 6d49cfdbab7c408ff41b2ddceb1dea9342db0c19
+        commit_sha: 49906751becb6527e7e695e0f671b0870043b219
         timestamp: ${{ steps.timestamp.outputs.timestamp }}
         attestation_file: "/github/workspace/attestation.json"
 

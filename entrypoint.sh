@@ -15,7 +15,7 @@ done
 
 case "${COMMAND}" in
   "generate_attestation")
-    exec /app/generate-attestation $filtered_args
+    exec /app/generate-attestation "$filtered_args"
     ;;
   "verify_attestation")
     exec /app/verify-attestation "$filtered_args"
