@@ -6,6 +6,8 @@ on:
 jobs:
   verify-attestation:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
 
     - name: Verify attestation
