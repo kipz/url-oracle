@@ -8,8 +8,6 @@ on:
         required: true
         type: string
 
-env:
-  COMMIT_SHA: 0087c73870c17f60fd1cbbd1010a01eedc141b41
 jobs:
   create-attestation:
     runs-on: ubuntu-latest
@@ -22,16 +20,16 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: kipz/url-oracle
-        ref: ${{ env.COMMIT_SHA }}
         token: ${{ secrets.token }}
-    - name: Get current timestamp
-      id: timestamp
+    - name: Get commit SHA and timestamp
+      id: metadata
       run: |
-        echo "timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+        echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+        echo "timestamp=$(git show -s --format=%cI HEAD)" >> $GITHUB_OUTPUT
     - name: Generate OpenPubkey attestation
       id: attestation
       run: |
-        go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --commit-sha ${{ env.COMMIT_SHA }} --timestamp ${{ steps.timestamp.outputs.timestamp }} --attestation-file attestation.json
+        go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --commit-sha ${{ steps.metadata.outputs.commit_sha }} --timestamp ${{ steps.metadata.outputs.timestamp }} --attestation-file attestation.json
 
     - name: Upload attestation as artifact
       uses: actions/upload-artifact@v4
