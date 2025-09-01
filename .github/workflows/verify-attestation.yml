@@ -18,15 +18,12 @@ jobs:
       run: |
         COMMIT_SHA=$(jq -r '.payload.commit_sha' attestation.json)
         echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
-    - name: Checkout repository at commit SHA
-      uses: actions/checkout@v4
-      with:
-        repository: kipz/url-oracle
-        ref: ${{ env.COMMIT_SHA }}
-        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Verify attestation
-      run: |
-        go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json --commit-sha ${{ env.COMMIT_SHA }}
+      uses: kipz/url-oracle@${{ env.COMMIT_SHA }}
+      with:
+        command: verify_attestation
+        attestation_file: /github/workspace/attestation.json
+        commit_sha: ${{ env.COMMIT_SHA }}
 
     - name: Comment on commit (if possible)
       run: |
