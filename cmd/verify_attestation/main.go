@@ -19,6 +19,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *commitSHA == "" {
+		fmt.Println("Error: commit-sha flag is required")
+		flag.Usage()
+		os.Exit(1)
+	}
+
 	reqURL := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_URL")
 	reqTok := os.Getenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN")
 	if reqURL == "" || reqTok == "" {
