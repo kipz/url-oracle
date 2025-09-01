@@ -13,14 +13,13 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: attestation.json
-        path: attestation.json
 
     - name: Verify attestation
       id: verification
       uses: kipz/url-oracle@1b410f30a94578d533176de76b9326e345511325
       with:
         command: verify_attestation
-        attestation_file: attestation.json
+        attestation_file: /github/workspace/attestation.json
         commit_sha: 1b410f30a94578d533176de76b9326e345511325
 
     - name: Comment on commit (if possible)
