@@ -17,9 +17,10 @@ jobs:
       id: extract_commit_sha
       run: |
         COMMIT_SHA=$(jq -r '.payload.commit_sha' attestation.json)
+        echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_OUTPUT
         echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
     - name: Verify attestation
-      uses: kipz/url-oracle@${{ env.COMMIT_SHA }}
+      uses: kipz/url-oracle@${{ steps.extract_commit_sha.outputs.COMMIT_SHA }}
       with:
         command: verify_attestation
         attestation_file: /github/workspace/attestation.json
