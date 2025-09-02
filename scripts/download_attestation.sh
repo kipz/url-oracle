@@ -47,10 +47,14 @@ if [ -n "$GH_TOKEN" ]; then
     echo "Using GH_TOKEN for authentication..."
     RUN_ID=$(GH_TOKEN="$GH_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
+    echo "Command output: $RUN_ID" >&2
+    echo "Exit code: $EXIT_CODE" >&2
 else
     echo "No GH_TOKEN found, using default authentication..."
     RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
+    echo "Command output: $RUN_ID" >&2
+    echo "Exit code: $EXIT_CODE" >&2
 fi
 
 if [ $EXIT_CODE -ne 0 ]; then
