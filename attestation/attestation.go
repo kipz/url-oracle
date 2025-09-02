@@ -1,25 +1,32 @@
 package attestation
 
 import (
+	"context"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 
+	"github.com/openpubkey/openpubkey/discover"
 	"github.com/openpubkey/openpubkey/pktoken"
+)
+
+const (
+	githubIssuer = "https://token.actions.githubusercontent.com"
 )
 
 // AttestationPayload represents the attestation data
 type AttestationPayload struct {
-	CommitSHA   string            `json:"commit_sha"`
-	Timestamp   string            `json:"timestamp"`
-	Url         string            `json:"url"`
-	Content     string            `json:"content"`
-	ContentHash string            `json:"content_hash"`
-	ContentSize int64             `json:"content_size"`
-	Metadata    map[string]string `json:"metadata"`
+	CommitSHA   string `json:"commit_sha"`
+	Timestamp   string `json:"timestamp"`
+	Url         string `json:"url"`
+	Content     string `json:"content"`
+	ContentHash string `json:"content_hash"`
+	ContentSize int64  `json:"content_size"`
+	JWKS        string `json:"jwks"`
 }
 
 // Attestation represents the complete attestation
@@ -55,7 +62,11 @@ func LoadAttestation(attestationFile string) (*Attestation, error) {
 }
 
 // CreateAttestationPayload creates a new attestation payload with the given parameters
-func CreateAttestationPayload(commitSHA, timestamp, url string, content string, contentHash string, contentSize int64) *AttestationPayload {
+func CreateAttestationPayload(commitSHA, timestamp, url string, content string, contentHash string, contentSize int64) (*AttestationPayload, error) {
+	jwks, err := GetJWKSContent()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get JWKS: %w", err)
+	}
 	return &AttestationPayload{
 		CommitSHA:   commitSHA,
 		Timestamp:   timestamp,
@@ -63,10 +74,8 @@ func CreateAttestationPayload(commitSHA, timestamp, url string, content string, 
 		Content:     content,
 		ContentHash: contentHash,
 		ContentSize: contentSize,
-		Metadata: map[string]string{
-			"repository": os.Getenv("GITHUB_REPOSITORY"),
-		},
-	}
+		JWKS:        jwks,
+	}, nil
 }
 
 // DownloadContent downloads content from a URL and returns the content, hash, and size
@@ -113,4 +122,12 @@ func CheckContentChanges(currentHash string, previousAttestationFile string) (bo
 	}
 
 	return true, nil
+}
+
+func GetJWKSContent() (string, error) {
+	jwks, err := discover.GetJwksByIssuer(context.TODO(), githubIssuer, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to get JWKS: %w", err)
+	}
+	return base64.StdEncoding.EncodeToString(jwks), nil
 }

@@ -5,9 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
-	"strings"
 
 	attest "url-oracle/attestation"
 
@@ -23,7 +20,6 @@ type VerificationResult struct {
 	PayloadHashVerified   bool
 	ProgramHashVerified   bool
 	CommitSHAVerified     bool
-	OracleVerified        bool
 	WorkflowRefVerified   bool
 	WorkflowSHAVerified   bool
 	Errors                []string
@@ -37,7 +33,6 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCom
 
 	// Create GitHub Actions URL provider
 	provider := providers.NewGithubOp(reqURL, reqTok)
-
 	// Load attestation
 	attestation, err := attest.LoadAttestation(attestationFile)
 	if err != nil {
@@ -76,7 +71,7 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCom
 	}
 
 	// Check that the attestation payload is valid
-	toverify := attest.CreateAttestationPayload(
+	toverify, err := attest.CreateAttestationPayload(
 		attestation.Payload.CommitSHA,
 		attestation.Payload.Timestamp,
 		attestation.Payload.Url,
@@ -84,6 +79,9 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCom
 		attestation.Payload.ContentHash,
 		attestation.Payload.ContentSize,
 	)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("Failed to create attestation payload: %v", err))
+	}
 
 	hashToVerify, err := toverify.Hash()
 	if err != nil {
@@ -102,16 +100,6 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCom
 		result.CommitSHAVerified = true
 	} else {
 		result.Errors = append(result.Errors, "Commit SHA does not match current repository")
-	}
-
-	// Verify attestation was created by this oracle
-	oracleVerified, err := verifyOracle(attestation.Payload.Metadata)
-	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("Oracle verification failed: %v", err))
-	} else if oracleVerified {
-		result.OracleVerified = true
-	} else {
-		result.Errors = append(result.Errors, "Attestation was not created by this oracle")
 	}
 
 	// Verify PK token workflow reference matches expected workflow
@@ -144,7 +132,6 @@ func (vr *VerificationResult) IsVerificationSuccessful() bool {
 		vr.PayloadHashVerified &&
 		vr.ProgramHashVerified &&
 		vr.CommitSHAVerified &&
-		vr.OracleVerified &&
 		vr.WorkflowRefVerified &&
 		vr.WorkflowSHAVerified
 }
@@ -166,45 +153,6 @@ func (vr *VerificationResult) GetSummary() string {
 func verifyCommitSHA(attestationCommitSHA string, currentCommitSHA string) (bool, error) {
 	// Compare commit SHAs
 	if attestationCommitSHA == currentCommitSHA {
-		return true, nil
-	}
-
-	return false, nil
-}
-
-// verifyOracle checks if the attestation was created by this oracle (same org/repo)
-func verifyOracle(attestationMetadata map[string]string) (bool, error) {
-	// Get current repository from environment
-	currentRepo := os.Getenv("GITHUB_REPOSITORY")
-	if currentRepo == "" {
-		// Fallback to git remote origin
-		cmd := exec.Command("git", "remote", "get-url", "origin")
-		output, err := cmd.Output()
-		if err != nil {
-			return false, fmt.Errorf("failed to get git remote origin: %w", err)
-		}
-
-		// Extract org/repo from git URL
-		remoteURL := strings.TrimSpace(string(output))
-		if strings.Contains(remoteURL, "github.com") {
-			parts := strings.Split(remoteURL, "github.com/")
-			if len(parts) > 1 {
-				currentRepo = strings.TrimSuffix(parts[1], ".git")
-			}
-		}
-	}
-
-	if currentRepo == "" {
-		return false, fmt.Errorf("could not determine current repository")
-	}
-
-	// Check if attestation metadata contains the same repository
-	attestationRepo, exists := attestationMetadata["repository"]
-	if !exists {
-		return false, fmt.Errorf("attestation missing repository metadata")
-	}
-
-	if attestationRepo == currentRepo {
 		return true, nil
 	}
 

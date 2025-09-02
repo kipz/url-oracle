@@ -45,7 +45,11 @@ func main() {
 
 	fmt.Println("🔍 Creating attestation payload...")
 	contentStr := base64.StdEncoding.EncodeToString(contentBytes)
-	payload := attestation.CreateAttestationPayload(*commitSHA, *timestamp, *url, contentStr, contentHash, contentSize)
+	payload, err := attestation.CreateAttestationPayload(*commitSHA, *timestamp, *url, contentStr, contentHash, contentSize)
+	if err != nil {
+		fmt.Printf("❌ Error: Failed to create attestation payload: %v\n", err)
+		os.Exit(1)
+	}
 
 	fmt.Println("🔍 Generating OpenPubkey token...")
 	token, err := generateOpenPubkeyAttestation(payload, reqURL, reqTok)
@@ -69,13 +73,11 @@ func generateOpenPubkeyAttestation(payload *attestation.AttestationPayload, reqU
 
 	// Create GitHub Actions OIDC provider
 	provider := providers.NewGithubOp(reqURL, reqTok)
-
 	// Create OpenPubkey client
 	opkClient, err := client.New(provider)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenPubkey client: %w", err)
 	}
-
 	// Authenticate and generate PK token
 	pkToken, err := opkClient.Auth(ctx)
 	if err != nil {
