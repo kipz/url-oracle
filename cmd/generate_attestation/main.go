@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -103,7 +104,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("✅ Downloaded content: %d bytes, hash: %s\n", contentSize, string(contentHash))
+	fmt.Printf("✅ Downloaded content: %d bytes, hash: %s\n", contentSize, base64.StdEncoding.EncodeToString(contentHash))
 
 	fmt.Println("🔍 Creating attestation payload...")
 
