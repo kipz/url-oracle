@@ -79,7 +79,7 @@ fi
 
 if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
     echo "No successful workflow runs found" >&2
-    exit 1
+    exit 2
 fi
 
 echo "Using workflow run ID: $RUN_ID"
