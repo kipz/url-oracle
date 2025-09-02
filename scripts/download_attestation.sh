@@ -54,22 +54,22 @@ else
 fi
 
 if [ $EXIT_CODE -ne 0 ]; then
-    echo "❌ Error: Failed to access repository $REPO"
-    echo "Command output: $RUN_ID"
-    echo "Exit code: $EXIT_CODE"
-    echo "This might be because:"
-    echo "  - The repository is private and you don't have access"
-    echo "  - The GitHub CLI is not authenticated"
-    echo "  - The workflow file '$WORKFLOW_FILE' doesn't exist"
-    echo "  - The repository doesn't exist"
-    echo ""
-    echo "Try running: gh auth login"
-    echo "Or use a repository you have access to"
+    echo "❌ Error: Failed to access repository $REPO" >&2
+    echo "Command output: $RUN_ID" >&2
+    echo "Exit code: $EXIT_CODE" >&2
+    echo "This might be because:" >&2
+    echo "  - The repository is private and you don't have access" >&2
+    echo "  - The GitHub CLI is not authenticated" >&2
+    echo "  - The workflow file '$WORKFLOW_FILE' doesn't exist" >&2
+    echo "  - The repository doesn't exist" >&2
+    echo "" >&2
+    echo "Try running: gh auth login" >&2
+    echo "Or use a repository you have access to" >&2
     exit 1
 fi
 
 if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
-    echo "No successful workflow runs found"
+    echo "No successful workflow runs found" >&2
     exit 1
 fi
 
@@ -83,7 +83,7 @@ else
 fi
 
 if [ -z "$ARTIFACT_ID" ]; then
-    echo "attestation.json artifact not found"
+    echo "attestation.json artifact not found" >&2
     exit 2
 fi
 
@@ -128,14 +128,14 @@ if [ "$VERIFY" = true ]; then
         echo "Commit $COMMIT_SHA found in repository"
         git checkout "$COMMIT_SHA"
     else
-        echo "⚠️  Warning: Commit $COMMIT_SHA not found in repository $REPO"
-        echo "This might be because the attestation is from a different repository or the commit has been removed"
-        echo "Skipping verification..."
+        echo "⚠️  Warning: Commit $COMMIT_SHA not found in repository $REPO" >&2
+        echo "This might be because the attestation is from a different repository or the commit has been removed" >&2
+        echo "Skipping verification..." >&2
         cd ..
         rm -rf "$VERIFY_DIR"
-        echo "🔍 Verification skipped - commit not found"
-        echo "📋 Summary: Attestation verification SKIPPED"
-        echo "Done!"
+        echo "🔍 Verification skipped - commit not found" >&2
+        echo "📋 Summary: Attestation verification SKIPPED" >&2
+        echo "Done!" >&2
         exit 0
     fi
 
@@ -149,7 +149,7 @@ if [ "$VERIFY" = true ]; then
         echo "✅ Attestation verification successful!"
         VERIFICATION_RESULT="SUCCESS"
     else
-        echo "❌ Attestation verification failed!"
+        echo "❌ Attestation verification failed!" >&2
         VERIFICATION_RESULT="FAILED"
     fi
 
