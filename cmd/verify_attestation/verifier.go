@@ -76,7 +76,7 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 		attestation.Payload.Timestamp,
 		attestation.Payload.Url,
 		attestation.Payload.Content,
-		attestation.Payload.ContentHash,
+		attestation.Payload.ContentDigest,
 		attestation.Payload.ContentSize,
 	)
 	if err != nil {

@@ -110,7 +110,7 @@ The verification process performs **6 comprehensive checks**:
     "timestamp": "2025-08-31T13:34:21Z",
     "url": "https://vstoken.actions.githubusercontent.com/.well-known/jwks",
     "content": "{\"keys\":[...]}",
-    "content_hash": "a1b2c3d4e5f6...",
+    "content_digest": "a1b2c3d4e5f6...",
     "content_size": 1234,
     "metadata": {
       "repository": "kipz/url-oracle"
@@ -131,7 +131,7 @@ The verification process performs **6 comprehensive checks**:
 | `timestamp` | string | ISO 8601 timestamp of attestation creation |
 | `url` | string | The URL that was monitored |
 | `content` | string | The actual content retrieved from the URL |
-| `content_hash` | string | SHA256 hash of the content |
+| `content_digest` | string | SHA256 digest of the content |
 | `content_size` | number | Size of the content in bytes |
 | `metadata` | object | Additional metadata (repository, etc.) |
 
