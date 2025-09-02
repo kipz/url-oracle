@@ -38,8 +38,8 @@ func main() {
 	fmt.Println("🔍 Verification Results:")
 	fmt.Printf("  PK Token: %s\n", getStatusIcon(result.PKTokenVerified))
 	fmt.Printf("  Signed Message: %s\n", getStatusIcon(result.SignedMessageVerified))
-	fmt.Printf("  Payload Hash: %s\n", getStatusIcon(result.PayloadHashVerified))
-	fmt.Printf("  Program Hash: %s\n", getStatusIcon(result.ProgramHashVerified))
+	fmt.Printf("  Payload Digest: %s\n", getStatusIcon(result.PayloadDigestVerified))
+	fmt.Printf("  Oracle Digest: %s\n", getStatusIcon(result.OracleDigestVerified))
 	fmt.Printf("  Workflow Reference: %s\n", getStatusIcon(result.WorkflowRefVerified))
 	fmt.Printf("  Workflow SHA: %s\n", getStatusIcon(result.WorkflowSHAVerified))
 

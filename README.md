@@ -77,12 +77,12 @@ The verification process performs **8 comprehensive checks**:
 - Verifies the message signature using the public key in the PK Token
 - Ensures the attestation hasn't been tampered with
 
-### 3. Payload Hash Verification
-- Compares the signed message with the attestation payload hash
+### 3. Payload Digest Verification
+- Compares the signed message with the attestation payload digest
 - Ensures the payload matches what was originally signed
 
-### 4. Program Hash Verification
-- Recreates the attestation payload and generates a hash
+### 4. Oracle Digest Verification
+- Recreates the attestation payload and generates a digest
 - Compares with the signed message to ensure consistency
 
 ### 5. Commit SHA Verification
@@ -141,7 +141,7 @@ The verification process performs **8 comprehensive checks**:
 ### Cryptographic Verification
 - **OpenPubkey Integration**: Uses OpenPubkey for cryptographically verifiable attestations
 - **Digital Signatures**: Each attestation is digitally signed
-- **Hash Verification**: Content integrity verified through SHA256 hashing
+- **Digest Verification**: Content integrity verified through SHA256 digesting
 
 ### Anti-Replay Protection
 - **Commit Binding**: Attestations are bound to specific git commits
@@ -149,8 +149,8 @@ The verification process performs **8 comprehensive checks**:
 - **Oracle Authentication**: Attestations can only be verified by the creating oracle
 
 ### Content Change Detection
-- **Hash Comparison**: Only creates new attestations when content actually changes
-- **Size Validation**: Tracks both content hash and size for comprehensive change detection
+- **Digest Comparison**: Only creates new attestations when content actually changes
+- **Size Validation**: Tracks both content digest and size for comprehensive change detection
 - **Metadata Preservation**: Maintains repository and creation context
 
 ## Artifact Management

@@ -31,7 +31,7 @@ jobs:
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       id: attestation
       run: |
-        go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --attestation-file attestation.json
+        go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --attestation-file attestation.json --skip-previous
 
     - name: Upload attestation as artifact
       uses: actions/upload-artifact@v4

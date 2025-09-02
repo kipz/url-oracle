@@ -84,6 +84,7 @@ func main() {
 	var (
 		attestationFile = flag.String("attestation-file", "", "Output attestationfile path")
 		url             = flag.String("url", "", "Some URL (e.g., https://vstoken.actions.githubusercontent.com/.well-known/jwks)")
+		skipPrevious    = flag.Bool("skip-previous", false, "Skip attempting to fetch and reference previous attestation")
 	)
 	flag.Parse()
 
@@ -99,18 +100,18 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Println("📥 Downloading content from URL...")
-	contentBytes, contentHash, contentSize, err := attestation.DownloadContent(*url)
+	contentBytes, contentDigest, contentSize, err := attestation.DownloadContent(*url)
 	if err != nil {
 		fmt.Printf("❌ Error: Failed to download content from %s: %v\n", *url, err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("✅ Downloaded content: %d bytes, hash: %s\n", contentSize, base64.StdEncoding.EncodeToString(contentHash))
+	fmt.Printf("✅ Downloaded content: %d bytes, digest: %s\n", contentSize, base64.StdEncoding.EncodeToString(contentDigest))
 
 	fmt.Println("🔍 Creating attestation payload...")
 
 	fmt.Println("🔍 Generating OpenPubkey token...")
-	token, err := generateOpenPubkeyAttestation(*url, contentBytes, contentHash, contentSize, reqURL, reqTok)
+	token, err := generateOpenPubkeyAttestation(*url, contentBytes, contentDigest, contentSize, reqURL, reqTok, *skipPrevious)
 	if err != nil {
 		fmt.Printf("❌ Error: OpenPubkey token generation failed: %v\n", err)
 		os.Exit(1)
@@ -126,7 +127,7 @@ func main() {
 	fmt.Printf("   Commit SHA: %s...\n", token.Payload.CommitSHA[:8])
 }
 
-func generateOpenPubkeyAttestation(url string, content, contentHash []byte, contentSize int64, reqURL, reqTok string) (*attestation.Attestation, error) {
+func generateOpenPubkeyAttestation(url string, content, contentDigest []byte, contentSize int64, reqURL, reqTok string, skipPrevious bool) (*attestation.Attestation, error) {
 	ctx := context.Background()
 
 	// Create GitHub Actions OIDC provider
@@ -150,26 +151,31 @@ func generateOpenPubkeyAttestation(url string, content, contentHash []byte, cont
 		return nil, fmt.Errorf("failed to extract claims from ID token: %w", err)
 	}
 
-	// Fetch previous attestation
-	prevAttestation, err := fetchPreviousAttestation(workflowRef)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch previous attestation: %w", err)
+	// Fetch previous attestation (if not skipped)
+	var prevAttestation *attestation.Attestation
+	if !skipPrevious {
+		prevAttestation, err = fetchPreviousAttestation(workflowRef)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch previous attestation: %w", err)
+		}
+	} else {
+		fmt.Println("⏭️  Skipping previous attestation fetch (--skip-previous flag set)")
 	}
 
 	// Create attestation payload with extracted values
-	payload, err := attestation.CreateAttestationPayload(prevAttestation, commitSHA, timestamp, url, content, contentHash, contentSize)
+	payload, err := attestation.CreateAttestationPayload(prevAttestation, commitSHA, timestamp, url, content, contentDigest, contentSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create attestation payload: %w", err)
 	}
 
-	// hash payload for signing
-	hash, err := payload.Hash()
+	// digest payload for signing
+	digest, err := payload.Hash()
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate attestation hash: %w", err)
+		return nil, fmt.Errorf("failed to generate attestation digest: %w", err)
 	}
 
 	// sign payload
-	msg := []byte(hash)
+	msg := []byte(digest)
 	signedMsg, err := pkToken.NewSignedMessage(msg, opkClient.GetSigner())
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign message: %w", err)

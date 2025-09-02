@@ -17,8 +17,8 @@ import (
 type VerificationResult struct {
 	PKTokenVerified       bool
 	SignedMessageVerified bool
-	PayloadHashVerified   bool
-	ProgramHashVerified   bool
+	PayloadDigestVerified bool
+	OracleDigestVerified  bool
 	WorkflowRefVerified   bool
 	WorkflowSHAVerified   bool
 	Errors                []string
@@ -59,17 +59,18 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 		result.SignedMessageVerified = true
 	}
 
-	// Check that msg is the same as the attestation payload hash
-	hash, err := attestation.Payload.Hash()
+	// Check that msg is the same as the attestation payload digest
+	digest, err := attestation.Payload.Hash()
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("Failed to generate attestation payload hash: %v", err))
-	} else if !bytes.Equal(msg, hash) {
-		result.Errors = append(result.Errors, "Attestation payload hash does not match signed message")
+		result.Errors = append(result.Errors, fmt.Sprintf("Failed to generate attestation payload digest: %v", err))
+	} else if !bytes.Equal(msg, digest) {
+		result.Errors = append(result.Errors, "Attestation payload digest does not match signed message")
 	} else {
-		result.PayloadHashVerified = true
+		result.PayloadDigestVerified = true
 	}
 
-	// Check that the attestation payload is valid
+	// Check that the attestation payload is valid by recreating it and comparing digests
+	// This verifies that the oracle generated the attestation correctly
 	toverify, err := attest.CreateAttestationPayload(
 		nil, // No previous attestation for verification
 		attestation.Payload.CommitSHA,
@@ -83,13 +84,13 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 		result.Errors = append(result.Errors, fmt.Sprintf("Failed to create attestation payload: %v", err))
 	}
 
-	hashToVerify, err := toverify.Hash()
+	digestToVerify, err := toverify.Hash()
 	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("Failed to generate program hash: %v", err))
-	} else if !bytes.Equal(msg, hashToVerify) {
-		result.Errors = append(result.Errors, "Program generated hash does not match signed message")
+		result.Errors = append(result.Errors, fmt.Sprintf("Failed to generate oracle digest: %v", err))
+	} else if !bytes.Equal(msg, digestToVerify) {
+		result.Errors = append(result.Errors, "Oracle generated digest does not match signed message")
 	} else {
-		result.ProgramHashVerified = true
+		result.OracleDigestVerified = true
 	}
 
 	// Verify PK token workflow reference matches expected workflow
@@ -119,8 +120,8 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 func (vr *VerificationResult) IsVerificationSuccessful() bool {
 	return vr.PKTokenVerified &&
 		vr.SignedMessageVerified &&
-		vr.PayloadHashVerified &&
-		vr.ProgramHashVerified &&
+		vr.PayloadDigestVerified &&
+		vr.OracleDigestVerified &&
 		vr.WorkflowRefVerified &&
 		vr.WorkflowSHAVerified
 }
