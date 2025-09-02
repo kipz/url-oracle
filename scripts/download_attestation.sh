@@ -131,12 +131,9 @@ if [ "$VERIFY" = true ]; then
     # Checkout repository at the specific commit
     echo "Checking out repository at commit $COMMIT_SHA..."
     if [ -n "$GH_TOKEN" ]; then
-        # Set Git credentials via environment variables
-        export GIT_ASKPASS="echo"
-        export GIT_USERNAME="token"
-        export GIT_PASSWORD="$GH_TOKEN"
-        echo "Repo is $REPO, dir is $VERIFY_DIR"
-        git clone "https://github.com/$REPO.git" .
+        # Use token as username for GitHub authentication
+        echo "Repo is $REPO, dir is $PWD"
+        git clone "https://$GH_TOKEN@github.com/$REPO.git" .
     else
         git clone "https://github.com/$REPO.git" .
     fi
