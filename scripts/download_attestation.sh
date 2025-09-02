@@ -44,17 +44,22 @@ echo "Looking for successful workflow runs in $REPO on branch '$BRANCH'..."
 echo "Fetching workflow runs for $WORKFLOW_FILE..."
 # Use GH_TOKEN if available (from GitHub Actions environment)
 if [ -n "$GH_TOKEN" ]; then
-    echo "Using GH_TOKEN for authentication..."
+    echo "Using GH_TOKEN for CLI authentication..."
+    set +e  # Temporarily disable exit on error
     RUN_ID=$(GH_TOKEN="$GH_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
+    set -e  # Re-enable exit on error
     echo "Command output: $RUN_ID" >&2
     echo "Exit code: $EXIT_CODE" >&2
 else
     echo "No GH_TOKEN found, using default authentication..."
+    set +e  # Temporarily disable exit on error
     RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
     echo "Command output: $RUN_ID" >&2
     echo "Exit code: $EXIT_CODE" >&2
+    set -e  # Re-enable exit on error
+
 fi
 
 if [ $EXIT_CODE -ne 0 ]; then
