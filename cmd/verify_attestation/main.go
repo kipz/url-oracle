@@ -49,6 +49,8 @@ func main() {
 	fmt.Printf("  Program Hash: %s\n", getStatusIcon(result.ProgramHashVerified))
 	fmt.Printf("  Commit SHA: %s\n", getStatusIcon(result.CommitSHAVerified))
 	fmt.Printf("  Oracle: %s\n", getStatusIcon(result.OracleVerified))
+	fmt.Printf("  Workflow Reference: %s\n", getStatusIcon(result.WorkflowRefVerified))
+	fmt.Printf("  Workflow SHA: %s\n", getStatusIcon(result.WorkflowSHAVerified))
 
 	fmt.Println()
 	fmt.Println(result.GetSummary())
