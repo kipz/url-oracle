@@ -1,0 +1,134 @@
+#!/bin/bash
+
+# Download and print attestation.json from the most recent successful workflow run
+# Usage: ./download_attestation.sh <repository> <workflow_file> [branch] [--no-verify]
+# Example: ./download_attestation.sh kipz/bbc-tech-news-oracle attest-bbc.yml main
+# Example: ./download_attestation.sh kipz/bbc-tech-news-oracle attest-bbc.yml main --no-verify
+
+set -e
+
+# Parse arguments
+VERIFY=true
+ARGS=()
+
+for arg in "$@"; do
+    case $arg in
+        --no-verify)
+            VERIFY=false
+            ;;
+        *)
+            ARGS+=("$arg")
+            ;;
+    esac
+done
+
+# Check for required arguments
+if [ ${#ARGS[@]} -lt 2 ] || [ ${#ARGS[@]} -gt 3 ]; then
+    echo "Error: Invalid number of arguments"
+    echo "Usage: $0 <repository> <workflow_file> [branch] [--no-verify]"
+    echo "Example: $0 kipz/bbc-tech-news-oracle attest-bbc.yml main"
+    echo "Example: $0 kipz/bbc-tech-news-oracle attest-bbc.yml main --no-verify"
+    echo "Branch defaults to 'main' if not specified"
+    echo "Use --no-verify to skip attestation verification"
+    exit 1
+fi
+
+# Configuration from command line arguments
+REPO="${ARGS[0]}"
+WORKFLOW_FILE="${ARGS[1]}"
+BRANCH="${ARGS[2]:-main}"
+
+echo "Looking for successful workflow runs in $REPO on branch '$BRANCH'..."
+
+# Get the most recent successful workflow run for the specified branch
+RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO")
+
+if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
+    echo "No successful workflow runs found"
+    exit 1
+fi
+
+echo "Using workflow run ID: $RUN_ID"
+
+# Get artifact ID for attestation.json
+ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+
+if [ -z "$ARTIFACT_ID" ]; then
+    echo "attestation.json artifact not found"
+    exit 2
+fi
+
+echo "Found attestation.json artifact ID: $ARTIFACT_ID"
+
+# Download the artifact
+echo "Downloading artifact..."
+gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+
+# Extract and save the JSON
+echo "Extracting attestation.json..."
+unzip -p attestation.zip attestation.json > previous_attestation.json
+
+# Extract commit SHA from attestation
+echo "Extracting commit SHA from attestation..."
+COMMIT_SHA=$(jq -r '.payload.commit_sha' previous_attestation.json)
+echo "Found commit SHA: $COMMIT_SHA"
+
+# Clean up
+rm -f attestation.zip
+
+if [ "$VERIFY" = true ]; then
+    echo "🔍 Starting attestation verification..."
+    
+    # Create a temporary directory for verification
+    VERIFY_DIR="verify_attestation_$$"
+    REPO="kipz/url-oracle"
+    echo "Creating verification directory: $VERIFY_DIR"
+    mkdir -p "$VERIFY_DIR"
+    cd "$VERIFY_DIR"
+
+    # Checkout repository at the specific commit
+    echo "Checking out repository at commit $COMMIT_SHA..."
+    git clone "https://github.com/$REPO.git" .
+
+    # Check if the commit exists in the repository
+    if git cat-file -e "$COMMIT_SHA" 2>/dev/null; then
+        echo "Commit $COMMIT_SHA found in repository"
+        git checkout "$COMMIT_SHA"
+    else
+        echo "⚠️  Warning: Commit $COMMIT_SHA not found in repository $REPO"
+        echo "This might be because the attestation is from a different repository or the commit has been removed"
+        echo "Skipping verification..."
+        cd ..
+        rm -rf "$VERIFY_DIR"
+        echo "🔍 Verification skipped - commit not found"
+        echo "📋 Summary: Attestation verification SKIPPED"
+        echo "Done!"
+        exit 0
+    fi
+
+    # Copy attestation.json to the checked out repository
+    echo "Copying attestation.json to verification directory..."
+    cp "../previous_attestation.json" ./attestation.json
+
+    # Run verification
+    echo "Running attestation verification..."
+    if go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json; then
+        echo "✅ Attestation verification successful!"
+        VERIFICATION_RESULT="SUCCESS"
+    else
+        echo "❌ Attestation verification failed!"
+        VERIFICATION_RESULT="FAILED"
+    fi
+
+    # Clean up verification directory
+    cd ..
+    rm -rf "$VERIFY_DIR"
+
+    echo "🔍 Verification completed for commit $COMMIT_SHA"
+    echo "📋 Summary: Attestation verification $VERIFICATION_RESULT"
+else
+    echo "🔍 Verification skipped (--no-verify flag used)"
+    echo "📋 Summary: Attestation downloaded successfully"
+fi
+
+echo "Done!"

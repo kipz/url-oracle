@@ -1,9 +1,9 @@
 package attestation
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,10 +23,10 @@ type AttestationPayload struct {
 	CommitSHA   string `json:"commit_sha"`
 	Timestamp   string `json:"timestamp"`
 	Url         string `json:"url"`
-	Content     string `json:"content"`
-	ContentHash string `json:"content_hash"`
+	Content     []byte `json:"content"`
+	ContentHash []byte `json:"content_hash"`
 	ContentSize int64  `json:"content_size"`
-	JWKS        string `json:"jwks"`
+	JWKS        []byte `json:"jwks"`
 }
 
 // Attestation represents the complete attestation
@@ -62,7 +62,7 @@ func LoadAttestation(attestationFile string) (*Attestation, error) {
 }
 
 // CreateAttestationPayload creates a new attestation payload with the given parameters
-func CreateAttestationPayload(commitSHA, timestamp, url string, content string, contentHash string, contentSize int64) (*AttestationPayload, error) {
+func CreateAttestationPayload(prevAttestation *Attestation, commitSHA, timestamp, url string, content []byte, contentHash []byte, contentSize int64) (*AttestationPayload, error) {
 	jwks, err := GetJWKSContent()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get JWKS: %w", err)
@@ -79,31 +79,30 @@ func CreateAttestationPayload(commitSHA, timestamp, url string, content string, 
 }
 
 // DownloadContent downloads content from a URL and returns the content, hash, and size
-func DownloadContent(url string) ([]byte, string, int64, error) {
+func DownloadContent(url string) ([]byte, []byte, int64, error) {
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, "", 0, fmt.Errorf("failed to download content from %s: %w", url, err)
+		return nil, nil, 0, fmt.Errorf("failed to download content from %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, "", 0, fmt.Errorf("HTTP request failed with status: %d", resp.StatusCode)
+		return nil, nil, 0, fmt.Errorf("HTTP request failed with status: %d", resp.StatusCode)
 	}
 
 	content, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, "", 0, fmt.Errorf("failed to read response body: %w", err)
+		return nil, nil, 0, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	// Calculate SHA256 hash
 	hash := sha256.Sum256(content)
-	hashHex := fmt.Sprintf("%x", hash)
 
-	return content, hashHex, int64(len(content)), nil
+	return content, hash[:], int64(len(content)), nil
 }
 
 // CheckContentChanges checks if content has changed by comparing with a previous attestation
-func CheckContentChanges(currentHash string, previousAttestationFile string) (bool, error) {
+func CheckContentChanges(currentHash []byte, previousAttestationFile string) (bool, error) {
 	// If no previous attestation file provided, assume changes
 	if previousAttestationFile == "" {
 		return true, nil
@@ -117,17 +116,17 @@ func CheckContentChanges(currentHash string, previousAttestationFile string) (bo
 	}
 
 	// Compare content hashes
-	if prevAttestation.Payload.ContentHash == currentHash {
+	if bytes.Equal(prevAttestation.Payload.ContentHash, currentHash) {
 		return false, nil
 	}
 
 	return true, nil
 }
 
-func GetJWKSContent() (string, error) {
+func GetJWKSContent() ([]byte, error) {
 	jwks, err := discover.GetJwksByIssuer(context.TODO(), githubIssuer, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JWKS: %w", err)
+		return nil, fmt.Errorf("failed to get JWKS: %w", err)
 	}
-	return base64.StdEncoding.EncodeToString(jwks), nil
+	return jwks, nil
 }
