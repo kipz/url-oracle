@@ -133,7 +133,7 @@ if [ "$VERIFY" = true ]; then
     if [ -n "$GH_TOKEN" ]; then
         # Use token as username for GitHub authentication
         echo "Repo is $REPO, dir is $PWD"
-        git clone "https://$GH_TOKEN@github.com/$REPO.git" .
+        git clone "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" .
     else
         git clone "https://github.com/$REPO.git" .
     fi

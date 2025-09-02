@@ -51,7 +51,7 @@ func fetchPreviousAttestation(workflowRef string) (*attestation.Attestation, err
 	scriptPath := "scripts/download_attestation.sh"
 	cmd := exec.Command("bash", scriptPath, repoFull, workflowFile, branch)
 	// Ensure GH_TOKEN is passed to the script if present in the environment
-	cmd.Env = append(os.Environ(), fmt.Sprintf("GH_TOKEN=%s", os.Getenv("GH_TOKEN")))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("GH_TOKEN=%s", os.Getenv("TOKEN")))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	fmt.Printf("🔎 Attempting to fetch previous attestation using %s %s %s %s...\n", scriptPath, repoFull, workflowFile, branch)
