@@ -1,79 +1,73 @@
 # URL Oracle
 
-A Docker-based GitHub Action that creates cryptographically verifiable attestations for URL content monitoring. This action can be used in any GitHub workflow to generate and verify attestations when the content of specified URLs changes.
+A Go-based GitHub Action that creates cryptographically verifiable attestations for URL content monitoring. This action can be used in any GitHub workflow to generate and verify attestations when the content of specified URLs changes.
 
 ## Overview
 
-The URL Oracle is a self-contained Docker action that monitors specified URLs and creates new attestations only when content changes are detected. Each attestation is cryptographically signed using OpenPubkey, providing verifiable proof of:
+The URL Oracle is a Go application that monitors specified URLs and creates new attestations only when content changes are detected. Each attestation is cryptographically signed using OpenPubkey, providing verifiable proof of:
 - When the content was fetched
-- What the content hash was
+- What the content digest was
 - Which commit generated the attestation
 - That the attestation was created by this specific oracle
 
 ## Architecture
 
-The URL Oracle is implemented as a **Docker-based GitHub Action** that:
-- **Builds on-demand**: GitHub builds the Docker image when the action is used
-- **Self-contained**: Includes all necessary Go binaries and dependencies
-- **Multi-command**: Supports different operations via the `command` input
-- **Cross-repository**: Can be used from any GitHub repository
+The URL Oracle is implemented as a **Go-based application** that:
+- **Runs directly**: Executes Go binaries in GitHub Actions workflows
+- **Self-contained**: Includes all necessary Go modules and dependencies
+- **Multi-command**: Supports different operations via separate Go programs
+- **Cross-repository**: Can be used from any GitHub repository via reusable workflows
 
 ## GitHub Action Usage
 
-### Basic Usage
+The URL Oracle is used via **reusable workflows** rather than direct action calls. This approach provides better maintainability and cross-repository compatibility.
 
-```yaml
-- name: Generate Attestation
-  uses: kipz/url-oracle@0087c73870c17f60fd1cbbd1010a01eedc141b41
-  with:
-    command: generate_attestation
-    url: 'https://vstoken.actions.githubusercontent.com/.well-known/jwks'
-    commit_sha: ${{ github.sha }}
-    timestamp: ${{ github.event_time }}
-```
+### Available Workflows
 
-### Available Commands
+The URL Oracle provides two reusable workflows:
 
-The action supports three main commands:
-
-#### 1. `generate_attestation`
+#### 1. Create Attestation Workflow
 Creates a new OpenPubkey attestation for the specified URL.
 
 ```yaml
-- name: Generate Attestation
-  uses: kipz/url-oracle@0087c73870c17f60fd1cbbd1010a01eedc141b41
+- name: Create Attestation
+  uses: kipz/url-oracle/.github/workflows/create-attestation.yml@main
   with:
-    command: generate_attestation
     url: 'https://example.com/api/data'
-    commit_sha: ${{ github.sha }}
-    timestamp: ${{ github.event_time }}
+  secrets:
+    token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-#### 2. `verify_attestation`
+#### 2. Verify Attestation Workflow
 Verifies the authenticity and integrity of an attestation.
 
 ```yaml
 - name: Verify Attestation
-  uses: kipz/url-oracle@0087c73870c17f60fd1cbbd1010a01eedc141b41
-  with:
-    command: verify_attestation
-    attestation_file: 'attestation.json'
-    commit_sha: ${{ github.sha }}
+  uses: kipz/url-oracle/.github/workflows/verify-attestation.yml@main
+  secrets:
+    token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-## Action Inputs
+## Workflow Inputs
+
+### Create Attestation Workflow
 
 | Input | Required | Description | Default |
 |-------|----------|-------------|---------|
-| `command` | No | Command to execute | `generate_attestation` |
-| `url` | No | URL to fetch and witness | - |
-| `commit_sha` | No | Current commit SHA | - |
-| `timestamp` | No | Timestamp for attestation | - |
-| `attestation_file` | No | Attestation file to verify (relative to workspace) | - |
+| `url` | Yes | URL to fetch and witness | - |
+| `secrets.token` | Yes | GitHub token for repository access | - |
+
+### Verify Attestation Workflow
+
+| Input | Required | Description | Default |
+|-------|----------|-------------|---------|
+| `secrets.token` | Yes | GitHub token for repository access | - |
+
+**Note**: The verify workflow expects an `attestation.json` artifact to be available from a previous workflow run.
 
 ## Attestation Verification
 
-The verification process performs **6 comprehensive checks**:
+The verification process performs **8 comprehensive checks**:
 
 ### 1. PK Token Verification
 - Verifies the OpenPubkey token is issued by the expected provider
@@ -95,7 +89,15 @@ The verification process performs **6 comprehensive checks**:
 - Verifies the attestation's commit SHA matches the current repository
 - Prevents replay attacks using old attestations from different commits
 
-### 6. Oracle Verification
+### 6. Workflow Reference Verification
+- Verifies the PK token's `job_workflow_ref` matches the expected workflow
+- Ensures the attestation was created by the correct workflow
+
+### 7. Workflow SHA Verification
+- Verifies the PK token's `job_workflow_sha` matches the expected commit SHA
+- Prevents replay attacks using old workflow versions
+
+### 8. Oracle Verification
 - Ensures the attestation was created by this specific oracle
 - Prevents cross-oracle attestation forgery
 
@@ -112,9 +114,8 @@ The verification process performs **6 comprehensive checks**:
     "content": "{\"keys\":[...]}",
     "content_digest": "a1b2c3d4e5f6...",
     "content_size": 1234,
-    "metadata": {
-      "repository": "kipz/url-oracle"
-    }
+    "jwks": "{\"keys\":[...]}",
+    "prev_attestation_digest": "f6e5d4c3b2a1..."
   },
   "pk_token": {
     // OpenPubkey PK Token structure
@@ -133,7 +134,8 @@ The verification process performs **6 comprehensive checks**:
 | `content` | string | The actual content retrieved from the URL |
 | `content_digest` | string | SHA256 digest of the content |
 | `content_size` | number | Size of the content in bytes |
-| `metadata` | object | Additional metadata (repository, etc.) |
+| `jwks` | string | JSON Web Key Set used for verification |
+| `prev_attestation_digest` | string | SHA256 digest of the previous attestation (if any) |
 
 
 ## Security Features
@@ -153,25 +155,15 @@ The verification process performs **6 comprehensive checks**:
 - **Size Validation**: Tracks both content hash and size for comprehensive change detection
 - **Metadata Preservation**: Maintains repository and creation context
 
-## Reusable Workflows
+## Artifact Management
 
-The URL Oracle provides two reusable workflows that can be called from other repositories:
+### Attestation Artifacts
 
-### 1. Create Attestation Workflow
-```yaml
-- name: Create Attestation
-  uses: kipz/url-oracle/.github/workflows/create-attestation.yml@main
-  with:
-    url: 'https://example.com/api/data'
-```
+The Create Attestation workflow automatically uploads the generated attestation as a job artifact named `attestation.json` with a 30-day retention period. Other workflows can download this artifact using the `actions/download-artifact@v4` action.
 
-**Outputs**: The generated attestation is automatically uploaded as a job artifact named `attestation.json` with a 30-day retention period. Other workflows can download this artifact using the `actions/download-artifact@v4` action.
+### Previous Attestation Integration
 
-### 2. Verify Attestation Workflow
-```yaml
-- name: Verify Attestation
-  uses: kipz/url-oracle/.github/workflows/verify-attestation.yml@main
-```
+The system automatically attempts to fetch and verify against previous attestations from the same workflow, creating a chain of attestations that can be used to detect content changes and maintain historical integrity.
 
 ## Downloading Attestation Artifacts
 
@@ -192,28 +184,34 @@ When using the Create Attestation workflow, the generated attestation is automat
 
 **Note**: The artifact is retained for 30 days and can be downloaded by any workflow that has access to the repository.
 
-### Go Binaries
-- **`generate-attestation`**: Generates OpenPubkey attestations
-- **`verify-attestation`**: Verifies attestation authenticity
+### Go Programs
+- **`cmd/generate_attestation/main.go`**: Generates OpenPubkey attestations
+- **`cmd/verify_attestation/main.go`**: Verifies attestation authenticity
+- **`cmd/verify_attestation/verifier.go`**: Core verification logic
 
 ### Build Process
-1. **Multi-stage Docker build** compiles Go binaries
-2. **Alpine-based runtime** for minimal image size
-3. **Non-root user** for security
-4. **Entrypoint script** routes commands to appropriate binaries
+1. **Go modules** manage dependencies
+2. **Direct execution** in GitHub Actions workflows
+3. **Cross-platform** Go binaries
+4. **Reusable workflows** for easy integration
 
 ## Development
 
 ### Local Testing
 
-Build and test the Docker image locally:
+Test the Go programs locally:
 ```bash
-# Build the image
-docker build -t url-oracle .
+# Install dependencies
+go mod download
 
-# Test different commands
-docker run --rm url-oracle generate_attestation --help
-docker run --rm url-oracle verify_attestation --help
+# Run tests
+go test ./...
+
+# Test attestation generation
+go run cmd/generate_attestation/main.go --url https://example.com --attestation-file test.json
+
+# Test attestation verification
+go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file test.json
 ```
 
 ### Go Development
@@ -225,14 +223,11 @@ go mod download
 # Run tests
 go test ./...
 
-# Build binaries
+# Build binaries (optional)
 go build -o generate-attestation ./cmd/generate_attestation
 go build -o verify-attestation ./cmd/verify_attestation
 ```
 
 ## Current Version
 
-The latest version of the URL Oracle is available at commit SHA:
-```
-0087c73870c17f60fd1cbbd1010a01eedc141b41
-```
+The latest version of the URL Oracle is available on the `main` branch and can be used via reusable workflows.
