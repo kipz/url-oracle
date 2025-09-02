@@ -17,6 +17,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
+      actions: read
     
     steps:
     - name: Checkout repository at current commit
