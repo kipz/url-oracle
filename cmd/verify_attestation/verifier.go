@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 
 	attest "url-oracle/attestation"
 
+	"github.com/openpubkey/openpubkey/pktoken"
 	"github.com/openpubkey/openpubkey/providers"
 	"github.com/openpubkey/openpubkey/verifier"
 )
@@ -22,6 +24,8 @@ type VerificationResult struct {
 	ProgramHashVerified   bool
 	CommitSHAVerified     bool
 	OracleVerified        bool
+	WorkflowRefVerified   bool
+	WorkflowSHAVerified   bool
 	Errors                []string
 }
 
@@ -110,6 +114,26 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCom
 		result.Errors = append(result.Errors, "Attestation was not created by this oracle")
 	}
 
+	// Verify PK token workflow reference matches expected workflow
+	workflowRefVerified, err := verifyWorkflowRef(attestation.PKToken)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("Workflow reference verification failed: %v", err))
+	} else if workflowRefVerified {
+		result.WorkflowRefVerified = true
+	} else {
+		result.Errors = append(result.Errors, "PK token workflow reference does not match expected workflow")
+	}
+
+	// Verify PK token workflow SHA matches commit SHA
+	workflowSHAVerified, err := verifyWorkflowSHA(attestation.PKToken, attestation.Payload.CommitSHA)
+	if err != nil {
+		result.Errors = append(result.Errors, fmt.Sprintf("Workflow SHA verification failed: %v", err))
+	} else if workflowSHAVerified {
+		result.WorkflowSHAVerified = true
+	} else {
+		result.Errors = append(result.Errors, "PK token workflow SHA does not match commit SHA")
+	}
+
 	return result, nil
 }
 
@@ -120,7 +144,9 @@ func (vr *VerificationResult) IsVerificationSuccessful() bool {
 		vr.PayloadHashVerified &&
 		vr.ProgramHashVerified &&
 		vr.CommitSHAVerified &&
-		vr.OracleVerified
+		vr.OracleVerified &&
+		vr.WorkflowRefVerified &&
+		vr.WorkflowSHAVerified
 }
 
 // GetSummary returns a summary of verification results
@@ -179,6 +205,44 @@ func verifyOracle(attestationMetadata map[string]string) (bool, error) {
 	}
 
 	if attestationRepo == currentRepo {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// verifyWorkflowRef checks if the PK token's job_workflow_ref matches the expected workflow
+func verifyWorkflowRef(pkToken *pktoken.PKToken) (bool, error) {
+	// Parse the PK token payload to extract GitHub Actions claims
+	var claims struct {
+		JobWorkflowRef string `json:"job_workflow_ref"`
+	}
+
+	if err := json.Unmarshal(pkToken.Payload, &claims); err != nil {
+		return false, fmt.Errorf("failed to parse PK token payload: %w", err)
+	}
+
+	expectedWorkflowRef := "kipz/url-oracle/.github/workflows/create-attestation.yml@refs/heads/main"
+
+	if claims.JobWorkflowRef == expectedWorkflowRef {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// verifyWorkflowSHA checks if the PK token's job_workflow_sha matches the expected commit SHA
+func verifyWorkflowSHA(pkToken *pktoken.PKToken, expectedCommitSHA string) (bool, error) {
+	// Parse the PK token payload to extract GitHub Actions claims
+	var claims struct {
+		JobWorkflowSHA string `json:"job_workflow_sha"`
+	}
+
+	if err := json.Unmarshal(pkToken.Payload, &claims); err != nil {
+		return false, fmt.Errorf("failed to parse PK token payload: %w", err)
+	}
+
+	if claims.JobWorkflowSHA == expectedCommitSHA {
 		return true, nil
 	}
 
