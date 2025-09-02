@@ -130,7 +130,11 @@ if [ "$VERIFY" = true ]; then
 
     # Checkout repository at the specific commit
     echo "Checking out repository at commit $COMMIT_SHA..."
-    git clone "https://github.com/$REPO.git" .
+    if [ -n "$GH_TOKEN" ]; then
+        git clone "https://$GH_TOKEN@github.com/$REPO.git" .
+    else
+        git clone "https://github.com/$REPO.git" .
+    fi
 
     # Check if the commit exists in the repository
     if git cat-file -e "$COMMIT_SHA" 2>/dev/null; then
