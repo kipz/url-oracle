@@ -130,10 +130,10 @@ if [ "$VERIFY" = true ]; then
 
     # Checkout repository at the specific commit
     echo "Checking out repository at commit $COMMIT_SHA..."
-    if [ -n "$GH_TOKEN" ]; then
+    if [ -n "$REPO_TOKEN" ]; then
         # Use token as username for GitHub authentication
         echo "Repo is $REPO, dir is $PWD"
-        git clone "https://x-access-token:$GH_TOKEN@github.com/$REPO.git" .
+        git clone "https://x-access-token:$REPO_TOKEN@github.com/$REPO.git" .
     else
         git clone "https://github.com/$REPO.git" .
     fi
