@@ -41,7 +41,27 @@ BRANCH="${ARGS[2]:-main}"
 echo "Looking for successful workflow runs in $REPO on branch '$BRANCH'..."
 
 # Get the most recent successful workflow run for the specified branch
-RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO")
+echo "Fetching workflow runs for $WORKFLOW_FILE..."
+# Use GH_TOKEN if available (from GitHub Actions environment)
+if [ -n "$GH_TOKEN" ]; then
+    echo "Using GH_TOKEN for authentication..."
+    RUN_ID=$(GH_TOKEN="$GH_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
+else
+    echo "No GH_TOKEN found, using default authentication..."
+    RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
+fi
+if [ $? -ne 0 ]; then
+    echo "❌ Error: Failed to access repository $REPO"
+    echo "This might be because:"
+    echo "  - The repository is private and you don't have access"
+    echo "  - The GitHub CLI is not authenticated"
+    echo "  - The workflow file '$WORKFLOW_FILE' doesn't exist"
+    echo "  - The repository doesn't exist"
+    echo ""
+    echo "Try running: gh auth login"
+    echo "Or use a repository you have access to"
+    exit 1
+fi
 
 if [ "$RUN_ID" = "null" ] || [ -z "$RUN_ID" ]; then
     echo "No successful workflow runs found"
@@ -51,7 +71,11 @@ fi
 echo "Using workflow run ID: $RUN_ID"
 
 # Get artifact ID for attestation.json
-ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+if [ -n "$GH_TOKEN" ]; then
+    ARTIFACT_ID=$(GH_TOKEN="$GH_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+else
+    ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+fi
 
 if [ -z "$ARTIFACT_ID" ]; then
     echo "attestation.json artifact not found"
@@ -62,7 +86,11 @@ echo "Found attestation.json artifact ID: $ARTIFACT_ID"
 
 # Download the artifact
 echo "Downloading artifact..."
-gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+if [ -n "$GH_TOKEN" ]; then
+    GH_TOKEN="$GH_TOKEN" gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+else
+    gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+fi
 
 # Extract and save the JSON
 echo "Extracting attestation.json..."
