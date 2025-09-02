@@ -103,7 +103,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("✅ Downloaded content: %d bytes, hash: %s\n", contentSize, contentHash)
+	fmt.Printf("✅ Downloaded content: %d bytes, hash: %s\n", contentSize, string(contentHash))
 
 	fmt.Println("🔍 Creating attestation payload...")
 
