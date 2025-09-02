@@ -46,12 +46,17 @@ echo "Fetching workflow runs for $WORKFLOW_FILE..."
 if [ -n "$GH_TOKEN" ]; then
     echo "Using GH_TOKEN for authentication..."
     RUN_ID=$(GH_TOKEN="$GH_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
+    EXIT_CODE=$?
 else
     echo "No GH_TOKEN found, using default authentication..."
     RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
+    EXIT_CODE=$?
 fi
-if [ $? -ne 0 ]; then
+
+if [ $EXIT_CODE -ne 0 ]; then
     echo "❌ Error: Failed to access repository $REPO"
+    echo "Command output: $RUN_ID"
+    echo "Exit code: $EXIT_CODE"
     echo "This might be because:"
     echo "  - The repository is private and you don't have access"
     echo "  - The GitHub CLI is not authenticated"
