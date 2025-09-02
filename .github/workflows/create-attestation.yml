@@ -27,7 +27,7 @@ jobs:
         token: ${{ secrets.token }}
     - name: Generate OpenPubkey attestation
       env:  
-        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TOKEN: ${{ github.token }}
       id: attestation
       run: |
         go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --attestation-file attestation.json
