@@ -9,18 +9,11 @@ import (
 func main() {
 	var (
 		attestationFile = flag.String("attestation-file", "", "Path to attestation file to verify")
-		commitSHA       = flag.String("commit-sha", "", "Commit SHA of this program")
 	)
 	flag.Parse()
 
 	if *attestationFile == "" {
 		fmt.Println("Error: attestation-file flag is required")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	if *commitSHA == "" {
-		fmt.Println("Error: commit-sha flag is required")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -35,7 +28,7 @@ func main() {
 	fmt.Println("🔍 Loading attestation...")
 
 	// Perform verification using the extracted logic
-	result, err := VerifyAttestation(*attestationFile, reqURL, reqTok, *commitSHA)
+	result, err := VerifyAttestation(*attestationFile, reqURL, reqTok)
 	if err != nil {
 		fmt.Printf("❌ Error during verification: %v\n", err)
 		os.Exit(1)
@@ -47,7 +40,6 @@ func main() {
 	fmt.Printf("  Signed Message: %s\n", getStatusIcon(result.SignedMessageVerified))
 	fmt.Printf("  Payload Hash: %s\n", getStatusIcon(result.PayloadHashVerified))
 	fmt.Printf("  Program Hash: %s\n", getStatusIcon(result.ProgramHashVerified))
-	fmt.Printf("  Commit SHA: %s\n", getStatusIcon(result.CommitSHAVerified))
 	fmt.Printf("  Workflow Reference: %s\n", getStatusIcon(result.WorkflowRefVerified))
 	fmt.Printf("  Workflow SHA: %s\n", getStatusIcon(result.WorkflowSHAVerified))
 

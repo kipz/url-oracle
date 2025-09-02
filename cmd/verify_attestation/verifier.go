@@ -19,14 +19,13 @@ type VerificationResult struct {
 	SignedMessageVerified bool
 	PayloadHashVerified   bool
 	ProgramHashVerified   bool
-	CommitSHAVerified     bool
 	WorkflowRefVerified   bool
 	WorkflowSHAVerified   bool
 	Errors                []string
 }
 
 // VerifyAttestation performs all verification steps on an attestation
-func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCommitSHA string) (*VerificationResult, error) {
+func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*VerificationResult, error) {
 	result := &VerificationResult{
 		Errors: make([]string, 0),
 	}
@@ -92,16 +91,6 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string, currentCom
 		result.ProgramHashVerified = true
 	}
 
-	// Verify commit SHA matches current repository
-	commitSHAVerified, err := verifyCommitSHA(attestation.Payload.CommitSHA, currentCommitSHA)
-	if err != nil {
-		result.Errors = append(result.Errors, fmt.Sprintf("Commit SHA verification failed: %v", err))
-	} else if commitSHAVerified {
-		result.CommitSHAVerified = true
-	} else {
-		result.Errors = append(result.Errors, "Commit SHA does not match current repository")
-	}
-
 	// Verify PK token workflow reference matches expected workflow
 	workflowRefVerified, err := verifyWorkflowRef(attestation.PKToken)
 	if err != nil {
@@ -131,7 +120,6 @@ func (vr *VerificationResult) IsVerificationSuccessful() bool {
 		vr.SignedMessageVerified &&
 		vr.PayloadHashVerified &&
 		vr.ProgramHashVerified &&
-		vr.CommitSHAVerified &&
 		vr.WorkflowRefVerified &&
 		vr.WorkflowSHAVerified
 }

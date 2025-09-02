@@ -27,13 +27,12 @@ jobs:
         repository: kipz/url-oracle
         ref: ${{ env.COMMIT_SHA }}
         token: ${{ secrets.token }}
-    - name: Download attestation again
-      uses: actions/download-artifact@v4
-      with:
-        name: attestation.json
+    - name: Copy attestation to workspace
+      run: |
+        cp /github/workspace/attestation.json ./attestation.json
     - name: Verify attestation
       run: |
-        go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json --commit-sha ${{ env.COMMIT_SHA }}
+        go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json
 
     - name: Comment on commit (if possible)
       run: |
