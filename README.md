@@ -114,7 +114,6 @@ The verification process performs **8 comprehensive checks**:
     "content": "{\"keys\":[...]}",
     "content_digest": "a1b2c3d4e5f6...",
     "content_size": 1234,
-    "jwks": "{\"keys\":[...]}",
     "prev_attestation_digest": "f6e5d4c3b2a1..."
   },
   "pk_token": {
@@ -134,7 +133,6 @@ The verification process performs **8 comprehensive checks**:
 | `content` | string | The actual content retrieved from the URL |
 | `content_digest` | string | SHA256 digest of the content |
 | `content_size` | number | Size of the content in bytes |
-| `jwks` | string | JSON Web Key Set used for verification |
 | `prev_attestation_digest` | string | SHA256 digest of the previous attestation (if any) |
 
 
@@ -185,7 +183,7 @@ When using the Create Attestation workflow, the generated attestation is automat
 **Note**: The artifact is retained for 30 days and can be downloaded by any workflow that has access to the repository.
 
 ### Go Programs
-- **`cmd/generate_attestation/main.go`**: Generates OpenPubkey attestations
+- **`cmd/generate_attestation/main.go`**: Generates OpenPubkey attestations (used by both workflows)
 - **`cmd/verify_attestation/main.go`**: Verifies attestation authenticity
 - **`cmd/verify_attestation/verifier.go`**: Core verification logic
 

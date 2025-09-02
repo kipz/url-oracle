@@ -71,7 +71,7 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 
 	// Check that the attestation payload is valid
 	toverify, err := attest.CreateAttestationPayload(
-		attestation,
+		nil, // No previous attestation for verification
 		attestation.Payload.CommitSHA,
 		attestation.Payload.Timestamp,
 		attestation.Payload.Url,

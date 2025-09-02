@@ -26,7 +26,6 @@ type AttestationPayload struct {
 	Content               []byte `json:"content"`
 	ContentDigest         []byte `json:"content_digest"`
 	ContentSize           int64  `json:"content_size"`
-	JWKS                  []byte `json:"jwks"`
 	PrevAttestationDigest []byte `json:"prev_attestation_digest"`
 }
 
@@ -64,13 +63,9 @@ func LoadAttestation(attestationFile string) (*Attestation, error) {
 
 // CreateAttestationPayload creates a new attestation payload with the given parameters
 func CreateAttestationPayload(prevAttestation *Attestation, commitSHA, timestamp, url string, content []byte, contentDigest []byte, contentSize int64) (*AttestationPayload, error) {
-	jwks, err := GetJWKSContent()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get JWKS: %w", err)
-	}
-
 	var prevDigest []byte
 	if prevAttestation != nil {
+		var err error
 		prevDigest, err = prevAttestation.Payload.Hash()
 		if err != nil {
 			return nil, fmt.Errorf("failed to hash previous attestation: %w", err)
@@ -84,7 +79,6 @@ func CreateAttestationPayload(prevAttestation *Attestation, commitSHA, timestamp
 		Content:               content,
 		ContentDigest:         contentDigest,
 		ContentSize:           contentSize,
-		JWKS:                  jwks,
 		PrevAttestationDigest: prevDigest,
 	}, nil
 }

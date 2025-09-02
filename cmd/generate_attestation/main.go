@@ -150,7 +150,7 @@ func generateOpenPubkeyAttestation(url string, content, contentHash []byte, cont
 		return nil, fmt.Errorf("failed to extract claims from ID token: %w", err)
 	}
 
-	// Use the workflow_ref extracted from the pkToken claims to call the GH api to retrieve the attestation.json uploaded on the most recent successful job run.
+	// Fetch previous attestation
 	prevAttestation, err := fetchPreviousAttestation(workflowRef)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch previous attestation: %w", err)
