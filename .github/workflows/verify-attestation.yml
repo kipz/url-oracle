@@ -8,10 +8,11 @@ jobs:
     permissions:
       id-token: write
     steps:
-    - name: Set attestation filenames
+    - name: Set attestation filenames and workflow reference
       run: |
         echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
         echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+        echo "EXPECTED_WORKFLOW_REF=${{ github.workflow_ref }}" >> $GITHUB_ENV
     
     - name: Download attestation
       uses: actions/download-artifact@v4

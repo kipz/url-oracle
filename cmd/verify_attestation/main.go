@@ -25,10 +25,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Get expected workflow reference from environment variable
+	expectedWorkflowRef := os.Getenv("EXPECTED_WORKFLOW_REF")
+
 	fmt.Println("🔍 Loading attestation...")
 
 	// Perform verification using the extracted logic
-	result, err := VerifyAttestation(*attestationFile, reqURL, reqTok)
+	result, err := VerifyAttestation(*attestationFile, reqURL, reqTok, expectedWorkflowRef)
 	if err != nil {
 		fmt.Printf("❌ Error during verification: %v\n", err)
 		os.Exit(1)

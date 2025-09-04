@@ -25,7 +25,7 @@ type VerificationResult struct {
 }
 
 // VerifyAttestation performs all verification steps on an attestation
-func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*VerificationResult, error) {
+func VerifyAttestation(attestationFile string, reqURL, reqTok string, expectedWorkflowRef string) (*VerificationResult, error) {
 	result := &VerificationResult{
 		Errors: make([]string, 0),
 	}
@@ -94,7 +94,7 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 	}
 
 	// Verify PK token workflow reference matches expected workflow
-	workflowRefVerified, err := verifyWorkflowRef(attestation.PKToken)
+	workflowRefVerified, err := verifyWorkflowRef(attestation.PKToken, expectedWorkflowRef)
 	if err != nil {
 		result.Errors = append(result.Errors, fmt.Sprintf("Workflow reference verification failed: %v", err))
 	} else if workflowRefVerified {
@@ -150,7 +150,7 @@ func verifyCommitSHA(attestationCommitSHA string, currentCommitSHA string) (bool
 }
 
 // verifyWorkflowRef checks if the PK token's job_workflow_ref matches the expected workflow
-func verifyWorkflowRef(pkToken *pktoken.PKToken) (bool, error) {
+func verifyWorkflowRef(pkToken *pktoken.PKToken, expectedWorkflowRef string) (bool, error) {
 	// Parse the PK token payload to extract GitHub Actions claims
 	var claims struct {
 		JobWorkflowRef string `json:"job_workflow_ref"`
@@ -159,8 +159,6 @@ func verifyWorkflowRef(pkToken *pktoken.PKToken) (bool, error) {
 	if err := json.Unmarshal(pkToken.Payload, &claims); err != nil {
 		return false, fmt.Errorf("failed to parse PK token payload: %w", err)
 	}
-
-	expectedWorkflowRef := "kipz/url-oracle/.github/workflows/create-attestation.yml@refs/heads/main"
 
 	if claims.JobWorkflowRef == expectedWorkflowRef {
 		return true, nil

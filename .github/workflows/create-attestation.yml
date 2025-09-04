@@ -22,10 +22,11 @@ jobs:
       with:
         repository: kipz/url-oracle
     
-    - name: Set attestation filenames
+    - name: Set attestation filenames and workflow reference
       run: |
         echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
         echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+        echo "EXPECTED_WORKFLOW_REF=${{ github.workflow_ref }}" >> $GITHUB_ENV
     
     - name: Generate OpenPubkey attestation
       env:  

@@ -172,8 +172,6 @@ The verification process performs **8 comprehensive checks**:
 
 The Create Attestation workflow automatically uploads the generated attestation as a job artifact named `attestation.json` with a 30-day retention period. Other workflows can download this artifact using the `actions/download-artifact@v4` action.
 
-**Note**: All workflows use environment variables (`ATTESTATION_FILE` and `PREVIOUS_ATTESTATION_FILE`) to avoid typos and ensure consistency across the codebase.
-
 ### Previous Attestation Integration
 
 The system automatically attempts to fetch and verify against previous attestations from the same workflow, creating a chain of attestations that can be used to detect content changes and maintain historical integrity. The system uses digest comparison to efficiently detect content changes without storing full previous attestations.
@@ -183,10 +181,11 @@ The system automatically attempts to fetch and verify against previous attestati
 When using the Create Attestation workflow, the generated attestation is automatically uploaded as a job artifact. Other workflows can download this artifact using the following pattern:
 
 ```yaml
-- name: Set attestation filenames
+- name: Set attestation filenames and workflow reference
   run: |
     echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
     echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+    echo "EXPECTED_WORKFLOW_REF=${{ github.workflow_ref }}" >> $GITHUB_ENV
 
 - name: Download attestation artifact
   uses: actions/download-artifact@v4
@@ -198,6 +197,7 @@ When using the Create Attestation workflow, the generated attestation is automat
   run: |
     echo "Attestation downloaded to: $(pwd)/${{ env.ATTESTATION_FILE }}"
     echo "Previous attestation file: ${{ env.PREVIOUS_ATTESTATION_FILE }}"
+    echo "Expected workflow reference: ${{ env.EXPECTED_WORKFLOW_REF }}"
     # Process the attestation file as needed
 ```
 
