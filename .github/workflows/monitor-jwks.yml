@@ -22,7 +22,6 @@ jobs:
     
     - name: Generate JWKS attestation
       env:
-        REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         go run cmd/generate_attestation/main.go --url https://token.actions.githubusercontent.com/.well-known/jwks --attestation-file jwks-attestation.json
@@ -30,11 +29,11 @@ jobs:
     - name: Check for content changes
       id: check_changes
       run: |
-        # Download previous JWKS attestation if it exists
-        if [ -f "previous-jwks-attestation.json" ]; then
+        # Use previous JWKS attestation if it exists
+        if [ -f "previous-attestation.json" ]; then
           echo "Previous attestation found, comparing content..."
-          CURRENT_DIGEST=$(jq -r '.payload.content_digest' jwks-attestation.json | base64 -d | xxd -p -c 256)
-          PREVIOUS_DIGEST=$(jq -r '.payload.content_digest' previous-jwks-attestation.json | base64 -d | xxd -p -c 256)
+          CURRENT_DIGEST=$(jq -r '.payload.content_digest' jwks-attestation.json)
+          PREVIOUS_DIGEST=$(jq -r '.payload.content_digest' previous-attestation.json)
           
           if [ "$CURRENT_DIGEST" = "$PREVIOUS_DIGEST" ]; then
             echo "JWKS content unchanged"
@@ -47,27 +46,6 @@ jobs:
           echo "No previous attestation found, assuming content changed"
           echo "changed=true" >> $GITHUB_OUTPUT
         fi
-    
-    - name: Download previous JWKS attestation
-      if: steps.check_changes.outputs.changed == 'true'
-      run: |
-        # Try to download the most recent JWKS attestation artifact
-        set +e
-        gh run list --workflow="monitor-jwks.yml" --status=success --limit=1 --json databaseId --jq '.[0].databaseId' --repo kipz/url-oracle | head -1 > run_id.txt
-        if [ -s run_id.txt ]; then
-          RUN_ID=$(cat run_id.txt)
-          echo "Downloading artifact from run $RUN_ID"
-          gh api repos/kipz/url-oracle/actions/runs/$RUN_ID/artifacts --jq '.artifacts[] | select(.name=="jwks-attestation.json") | .id' > artifact_id.txt
-          if [ -s artifact_id.txt ]; then
-            ARTIFACT_ID=$(cat artifact_id.txt)
-            echo "Downloading artifact $ARTIFACT_ID"
-            gh api repos/kipz/url-oracle/actions/artifacts/$ARTIFACT_ID/zip --output previous-jwks-attestation.zip
-            unzip -p previous-jwks-attestation.zip jwks-attestation.json > previous-jwks-attestation.json
-            rm -f previous-jwks-attestation.zip artifact_id.txt
-          fi
-        fi
-        rm -f run_id.txt
-        set -e
     
     - name: Create release if content changed
       if: steps.check_changes.outputs.changed == 'true'

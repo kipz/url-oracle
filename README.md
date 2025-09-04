@@ -1,5 +1,7 @@
 # URL Oracle
 
+## WARNING: this is an alpha quality experiment at best - use at your own risk!
+
 A Go-based GitHub Action that creates cryptographically verifiable attestations for URL content monitoring. This action can be used in any GitHub workflow to generate and verify attestations when the content of specified URLs changes.
 
 This project is based on the ideas and hard work of [Ethan Heilman](https://www.ethanheilman.com/index.html), specifically on [OpenPubkey](https://github.com/openpubkey/openpubkey) and his blog on [GitHub Actions Oracles](https://www.ethanheilman.com/x/35/index.html)

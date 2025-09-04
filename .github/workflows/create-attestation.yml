@@ -7,9 +7,6 @@ on:
         description: 'URL to fetch and witness'
         required: true
         type: string
-    secrets:
-      token:
-        required: true
 
 jobs:
   create-attestation:
@@ -24,10 +21,8 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: kipz/url-oracle
-        token: ${{ secrets.token }}
     - name: Generate OpenPubkey attestation
       env:  
-        REPO_TOKEN: ${{ secrets.token }}
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       id: attestation
       run: |

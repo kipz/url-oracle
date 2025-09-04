@@ -42,17 +42,17 @@ echo "Looking for successful workflow runs in $REPO on branch '$BRANCH'..."
 
 # Get the most recent successful workflow run for the specified branch
 echo "Fetching workflow runs for $WORKFLOW_FILE..."
-# Use GH_TOKEN if available (from GitHub Actions environment)
-if [ -n "$GH_TOKEN" ]; then
-    echo "Using GH_TOKEN for CLI authentication..."
+# Use CALLER_TOKEN if available (from GitHub Actions environment)
+if [ -n "$CALLER_TOKEN" ]; then
+    echo "Using CALLER_TOKEN for CLI authentication..."
     set +e  # Temporarily disable exit on error
-    RUN_ID=$(GH_TOKEN="$GH_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
+    RUN_ID=$(CALLER_TOKEN="$CALLER_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
     echo "Command output: $RUN_ID" >&2
     echo "Exit code: $EXIT_CODE" >&2
     set -e  # Re-enable exit on error
 else
-    echo "No GH_TOKEN found, using default authentication..."
+    echo "No CALLER_TOKEN found, using default authentication..."
     set +e  # Temporarily disable exit on error
     RUN_ID=$(gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
@@ -85,8 +85,8 @@ fi
 echo "Using workflow run ID: $RUN_ID"
 
 # Get artifact ID for attestation.json
-if [ -n "$GH_TOKEN" ]; then
-    ARTIFACT_ID=$(GH_TOKEN="$GH_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+if [ -n "$CALLER_TOKEN" ]; then
+    ARTIFACT_ID=$(CALLER_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
 else
     ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
 fi
@@ -100,8 +100,8 @@ echo "Found attestation.json artifact ID: $ARTIFACT_ID"
 
 # Download the artifact
 echo "Downloading artifact..."
-if [ -n "$GH_TOKEN" ]; then
-    GH_TOKEN="$GH_TOKEN" gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+if [ -n "$CALLER_TOKEN" ]; then
+    CALLER_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
 else
     gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
 fi
@@ -130,13 +130,7 @@ if [ "$VERIFY" = true ]; then
 
     # Checkout repository at the specific commit
     echo "Checking out repository at commit $COMMIT_SHA..."
-    if [ -n "$REPO_TOKEN" ]; then
-        # Use token as username for GitHub authentication
-        echo "Repo is $REPO, dir is $PWD"
-        git clone "https://x-access-token:$REPO_TOKEN@github.com/$REPO.git" .
-    else
-        git clone "https://github.com/$REPO.git" .
-    fi
+    git clone "https://github.com/$REPO.git" .
 
     # Check if the commit exists in the repository
     if git cat-file -e "$COMMIT_SHA" 2>/dev/null; then
