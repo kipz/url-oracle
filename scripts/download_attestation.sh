@@ -86,7 +86,7 @@ echo "Using workflow run ID: $RUN_ID"
 
 # Get artifact ID for attestation.json
 if [ -n "$CALLER_TOKEN" ]; then
-    ARTIFACT_ID=$(CALLER_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+    ARTIFACT_ID=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
 else
     ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
 fi
@@ -101,7 +101,7 @@ echo "Found attestation.json artifact ID: $ARTIFACT_ID"
 # Download the artifact
 echo "Downloading artifact..."
 if [ -n "$CALLER_TOKEN" ]; then
-    CALLER_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+    GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
 else
     gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
 fi
