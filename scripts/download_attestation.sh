@@ -46,7 +46,7 @@ echo "Fetching workflow runs for $WORKFLOW_FILE..."
 if [ -n "$CALLER_TOKEN" ]; then
     echo "Using CALLER_TOKEN for CLI authentication..."
     set +e  # Temporarily disable exit on error
-    RUN_ID=$(CALLER_TOKEN="$CALLER_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
+    RUN_ID=$(GH_TOKEN="$CALLER_TOKEN" gh run list --workflow="$WORKFLOW_FILE" --status=success --branch="$BRANCH" --limit=1 --json databaseId --jq '.[0].databaseId' --repo "$REPO" 2>&1)
     EXIT_CODE=$?
     echo "Command output: $RUN_ID" >&2
     echo "Exit code: $EXIT_CODE" >&2
