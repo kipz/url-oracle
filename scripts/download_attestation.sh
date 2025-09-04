@@ -178,6 +178,9 @@ if [ "$VERIFY" = true ]; then
 
     echo "🔍 Verification completed for commit $COMMIT_SHA"
     echo "📋 Summary: Attestation verification $VERIFICATION_RESULT"
+    if [ "$VERIFICATION_RESULT" = "FAILED" ]; then
+        exit 1
+    fi
 else
     echo "🔍 Verification skipped (--no-verify flag used)"
     echo "📋 Summary: Attestation downloaded successfully"

@@ -165,6 +165,9 @@ func verifyWorkflowRef(pkToken *pktoken.PKToken) (bool, error) {
 	if claims.JobWorkflowRef == expectedWorkflowRef {
 		return true, nil
 	}
+	fmt.Println("PK token workflow reference does not match expected workflow")
+	fmt.Println("PK token workflow reference:", claims.JobWorkflowRef)
+	fmt.Println("Expected workflow reference:", expectedWorkflowRef)
 
 	return false, nil
 }
