@@ -72,9 +72,9 @@ func VerifyAttestation(attestationFile string, reqURL, reqTok string) (*Verifica
 	// Check that the attestation payload is valid by recreating it and comparing digests
 	// This verifies that the oracle generated the attestation correctly
 	toverify, err := attest.CreateAttestationPayload(
-		attestation.Payload.PrevAttestationDigest,
-		attestation.Payload.CommitSHA,
 		attestation.Payload.Timestamp,
+		attestation.Payload.CommitSHA,
+		attestation.Payload.PreviousAttestation,
 		attestation.Payload.Url,
 		attestation.Payload.Content,
 		attestation.Payload.ContentDigest,

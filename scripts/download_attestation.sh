@@ -7,9 +7,6 @@
 
 set -e
 
-# Define attestation filenames to avoid typos
-ATTESTATION_FILE="attestation.json"
-PREVIOUS_ATTESTATION_FILE="previous_attestation.json"
 
 # Parse arguments
 VERIFY=true
@@ -27,20 +24,24 @@ for arg in "$@"; do
 done
 
 # Check for required arguments
-if [ ${#ARGS[@]} -lt 2 ] || [ ${#ARGS[@]} -gt 3 ]; then
+if [ ${#ARGS[@]} -lt 3 ] || [ ${#ARGS[@]} -gt 4 ]; then
     echo "Error: Invalid number of arguments"
-    echo "Usage: $0 <repository> <workflow_file> [branch] [--no-verify]"
-    echo "Example: $0 kipz/bbc-tech-news-oracle attest-bbc.yml main"
-    echo "Example: $0 kipz/bbc-tech-news-oracle attest-bbc.yml main --no-verify"
+    echo "Usage: $0 <attestation_file> <repository> <workflow_file> [branch] [--no-verify]"
+    echo "Example: $0 attestation.json kipz/bbc-tech-news-oracle attest-bbc.yml main"
+    echo "Example: $0 attestation.json kipz/bbc-tech-news-oracle attest-bbc.yml main --no-verify"
     echo "Branch defaults to 'main' if not specified"
     echo "Use --no-verify to skip attestation verification"
     exit 1
 fi
 
 # Configuration from command line arguments
-REPO="${ARGS[0]}"
-WORKFLOW_FILE="${ARGS[1]}"
-BRANCH="${ARGS[2]:-main}"
+ATTESTATION_FILE="${ARGS[0]}"
+ATTESTATION_FILE_NAME=$(basename "$ATTESTATION_FILE")
+REPO="${ARGS[1]}"
+WORKFLOW_FILE="${ARGS[2]}"
+BRANCH="${ARGS[3]:-main}"
+PREVIOUS_ATTESTATION_FILE="previous_attestation.json"
+PREVIOUS_ATTESTATION_DETAILS_FILE="previous_attestation_details.json"
 
 echo "Looking for successful workflow runs in $REPO on branch '$BRANCH'..."
 
@@ -90,9 +91,13 @@ echo "Using workflow run ID: $RUN_ID"
 
 # Get artifact ID for attestation.json
 if [ -n "$CALLER_TOKEN" ]; then
-    ARTIFACT_ID=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'") | .id')
+    ARTIFACT=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'")')
+    ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
+    DIGEST=$(echo "$ARTIFACT" | jq -r '.digest')
 else
-    ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'") | .id')
+    ARTIFACT=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'")')
+    ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
+    DIGEST=$(echo "$ARTIFACT" | jq -r '.digest')
 fi
 
 if [ -z "$ARTIFACT_ID" ]; then
@@ -103,11 +108,12 @@ fi
 echo "Found $ATTESTATION_FILE artifact ID: $ARTIFACT_ID"
 
 # Download the artifact
+ARTIFACT_URL="/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip"
 echo "Downloading artifact..."
 if [ -n "$CALLER_TOKEN" ]; then
-    GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+    GH_TOKEN="$CALLER_TOKEN" gh api "$ARTIFACT_URL" > attestation.zip
 else
-    gh api "/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip" > attestation.zip
+    gh api "$ARTIFACT_URL" > attestation.zip
 fi
 
 # Extract and save the JSON
@@ -152,19 +158,19 @@ if [ "$VERIFY" = true ]; then
         exit 0
     fi
 
-    # Copy attestation.json to the checked out repository
-    echo "Copying $ATTESTATION_FILE to verification directory..."
-    cp "../$PREVIOUS_ATTESTATION_FILE" "./$ATTESTATION_FILE"
-
     # Run verification
     echo "Running attestation verification..."
-    if go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file "$ATTESTATION_FILE"; then
+    if go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file "../$PREVIOUS_ATTESTATION_FILE"; then
         echo "✅ Attestation verification successful!"
         VERIFICATION_RESULT="SUCCESS"
     else
         echo "❌ Attestation verification failed!" >&2
         VERIFICATION_RESULT="FAILED"
     fi
+    # Create previous attestation details file (Digest, Run URL, Filename)
+    echo "Creating previous attestation details file..."
+    echo "{\"digest\":\"$DIGEST\",\"artifact_url\":\"$ARTIFACT_URL\"}" > "$PREVIOUS_ATTESTATION_DETAILS_FILE"
+    
 
     # Clean up verification directory
     cd ..

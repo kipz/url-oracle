@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,33 +9,31 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 	"url-oracle/attestation"
 
 	"github.com/openpubkey/openpubkey/client"
-	"github.com/openpubkey/openpubkey/pktoken"
 	"github.com/openpubkey/openpubkey/providers"
 )
 
-// Define previous attestation filename to avoid typos
-const previousAttestationFile = "previous_attestation.json"
+// Define previous attestation details filename to avoid typos
+const previousAttestationDetailsFile = "previous_attestation_details.json"
 
-// fetchPreviousAttestation attempts to fetch a previous attestation using the workflow reference
-func fetchPreviousAttestation(workflowRef string) (*attestation.Attestation, error) {
+// fetchPreviousAttestationDetails attempts to fetch a previous attestation details using the workflow reference
+func fetchPreviousAttestationDetails(claims *attestation.IDTokenClaims, attestationFileName string) (*attestation.AttestationDetails, error) {
 	// Parse owner, repo, workflow file from workflowRef (format: owner/repo/.github/workflows/filename.yml@ref)
 	// Example: kipz/url-oracle/.github/workflows/create-attestation.yml@refs/heads/main
-	parts := strings.Split(workflowRef, "@")
+	parts := strings.Split(claims.WorkflowRef, "@")
 	if len(parts) < 2 {
-		fmt.Printf("⚠️  Warning: Unexpected workflow_ref format: %s\n", workflowRef)
-		return nil, fmt.Errorf("unexpected workflow_ref format: %s", workflowRef)
+		fmt.Printf("⚠️  Warning: Unexpected workflow_ref format: %s\n", claims.WorkflowRef)
+		return nil, fmt.Errorf("unexpected workflow_ref format: %s", claims.WorkflowRef)
 	}
 	workflowPath := parts[0]
 	branchRef := parts[1]
 
 	parts = strings.Split(workflowPath, "/")
 	if len(parts) != 5 {
-		fmt.Printf("⚠️  Warning: Unexpected workflow_ref format: %s\n", workflowRef)
-		return nil, fmt.Errorf("unexpected workflow_ref format: %s", workflowRef)
+		fmt.Printf("⚠️  Warning: Unexpected workflow_ref format: %s\n", claims.WorkflowRef)
+		return nil, fmt.Errorf("unexpected workflow_ref format: %s", claims.WorkflowRef)
 	}
 	owner := parts[0]
 	repo := parts[1]
@@ -52,7 +49,7 @@ func fetchPreviousAttestation(workflowRef string) (*attestation.Attestation, err
 
 	// Call scripts/download_attestation.sh to fetch a previous attestation (if any)
 	scriptPath := "scripts/download_attestation.sh"
-	cmd := exec.Command("bash", scriptPath, repoFull, workflowFile, branch)
+	cmd := exec.Command("bash", scriptPath, attestationFileName, repoFull, workflowFile, branch)
 	cmd.Env = append(os.Environ(), fmt.Sprintf("CALLER_TOKEN=%s", os.Getenv("CALLER_TOKEN")))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -68,17 +65,17 @@ func fetchPreviousAttestation(workflowRef string) (*attestation.Attestation, err
 		}
 	}
 	// Load previous attestation file and return it
-	prevAttestationPath := previousAttestationFile
-	if _, err := os.Stat(prevAttestationPath); err == nil {
-		prevAttestation, err := attestation.LoadAttestation(prevAttestationPath)
+	prevAttestationDetailsPath := previousAttestationDetailsFile
+	if _, err := os.Stat(prevAttestationDetailsPath); err == nil {
+		details, err := attestation.LoadAttestationDetails(prevAttestationDetailsPath)
 		if err != nil {
-			fmt.Printf("⚠️  Warning: Failed to load previous attestation: %v\n", err)
-			return nil, fmt.Errorf("failed to load previous attestation: %w", err)
+			fmt.Printf("⚠️  Warning: Failed to load previous attestation details: %v\n", err)
+			return nil, fmt.Errorf("failed to load previous attestation details: %w", err)
 		}
-		fmt.Printf("✅ Loaded previous attestation from %s\n", prevAttestationPath)
-		return prevAttestation, nil
+		fmt.Printf("✅ Loaded previous attestation from %s\n", prevAttestationDetailsPath)
+		return details, nil
 	}
-	return nil, fmt.Errorf("previous attestation not found")
+	return nil, fmt.Errorf("previous attestation details not found")
 }
 
 func main() {
@@ -100,6 +97,7 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
+	attestationFileName := filepath.Base(*attestationFile)
 	fmt.Println("📥 Downloading content from URL...")
 	contentBytes, contentDigest, contentSize, err := attestation.DownloadContent(*url)
 	if err != nil {
@@ -107,12 +105,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("✅ Downloaded content: %d bytes, digest: %s\n", contentSize, base64.StdEncoding.EncodeToString(contentDigest))
+	fmt.Printf("✅ Downloaded content: %d bytes, digest: %s\n", contentSize, contentDigest)
 
 	fmt.Println("🔍 Creating attestation payload...")
 
 	fmt.Println("🔍 Generating OpenPubkey token...")
-	token, err := generateOpenPubkeyAttestation(*url, contentBytes, contentDigest, contentSize, reqURL, reqTok, *skipPrevious)
+
+	token, err := createAttestation(attestationFileName, *url, contentBytes, contentDigest, contentSize, reqURL, reqTok, *skipPrevious)
 	if err != nil {
 		fmt.Printf("❌ Error: OpenPubkey token generation failed: %v\n", err)
 		os.Exit(1)
@@ -128,7 +127,7 @@ func main() {
 	fmt.Printf("   Commit SHA: %s...\n", token.Payload.CommitSHA[:8])
 }
 
-func generateOpenPubkeyAttestation(url string, content, contentDigest []byte, contentSize int64, reqURL, reqTok string, skipPrevious bool) (*attestation.Attestation, error) {
+func createAttestation(attestationFileName string, url string, content []byte, contentDigest string, contentSize int64, reqURL, reqTok string, skipPrevious bool) (*attestation.Attestation, error) {
 	ctx := context.Background()
 
 	// Create GitHub Actions OIDC provider
@@ -147,28 +146,24 @@ func generateOpenPubkeyAttestation(url string, content, contentDigest []byte, co
 	}
 
 	// Extract commit SHA and timestamp from ID token payload
-	commitSHA, timestamp, workflowRef, err := extractClaimsFromIDToken(pkToken)
+	claims, err := attestation.ExtractClaimsFromIDToken(pkToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract claims from ID token: %w", err)
 	}
 
 	// Fetch previous attestation (if not skipped)
-	var prevAttestationDigest []byte
+	var prevAttestationDetails *attestation.AttestationDetails
 	if !skipPrevious {
-		prevAttestation, err := fetchPreviousAttestation(workflowRef)
+		prevAttestationDetails, err = fetchPreviousAttestationDetails(claims, attestationFileName)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch previous attestation: %w", err)
-		}
-		prevAttestationDigest, err = prevAttestation.Payload.Hash()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create digest of previous attestation: %w", err)
 		}
 	} else {
 		fmt.Println("⏭️  Skipping previous attestation fetch (--skip-previous flag set)")
 	}
 
 	// Create attestation payload with extracted values
-	payload, err := attestation.CreateAttestationPayload(prevAttestationDigest, commitSHA, timestamp, url, content, contentDigest, contentSize)
+	payload, err := attestation.CreateAttestationPayload(claims.Timestamp, claims.JobWorkflowSHA, prevAttestationDetails, url, content, contentDigest, contentSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create attestation payload: %w", err)
 	}
@@ -185,7 +180,6 @@ func generateOpenPubkeyAttestation(url string, content, contentDigest []byte, co
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign message: %w", err)
 	}
-
 	// Create the attestation structure with real OpenPubkey token
 	attestation := &attestation.Attestation{
 		Payload:   *payload,
@@ -194,36 +188,6 @@ func generateOpenPubkeyAttestation(url string, content, contentDigest []byte, co
 	}
 
 	return attestation, nil
-}
-
-// extractClaimsFromIDToken extracts job_workflow_sha and iat claims from the PK token payload
-func extractClaimsFromIDToken(pkToken *pktoken.PKToken) (commitSHA, timestamp, workflowRef string, err error) {
-	// Parse the PK token payload to extract GitHub Actions claims
-	var claims struct {
-		JobWorkflowSHA string `json:"job_workflow_sha"`
-		IAT            int64  `json:"iat"`
-		WorkflowRef    string `json:"workflow_ref"`
-	}
-
-	if err := json.Unmarshal(pkToken.Payload, &claims); err != nil {
-		return "", "", "", fmt.Errorf("failed to parse PK token payload: %w", err)
-	}
-
-	if claims.JobWorkflowSHA == "" {
-		return "", "", "", fmt.Errorf("job_workflow_sha claim not found in ID token")
-	}
-
-	if claims.IAT == 0 {
-		return "", "", "", fmt.Errorf("iat claim not found in ID token")
-	}
-	if claims.WorkflowRef == "" {
-		return "", "", "", fmt.Errorf("workflow_ref claim not found in ID token")
-	}
-
-	// Convert IAT (issued at) timestamp to ISO 8601 format
-	timestamp = time.Unix(claims.IAT, 0).UTC().Format(time.RFC3339)
-
-	return claims.JobWorkflowSHA, timestamp, claims.WorkflowRef, nil
 }
 
 func saveAttestation(attestation *attestation.Attestation, outputFile string) error {
