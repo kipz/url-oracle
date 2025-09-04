@@ -2,8 +2,8 @@ name: Monitor JWKS
 
 on:
   schedule:
-    # Run every hour
-    - cron: '0 * * * *'
+    # Run every 2 hours
+    - cron: '0 */2 * * *'
   workflow_dispatch: # Allow manual triggering
 
 jobs:
@@ -30,49 +30,6 @@ jobs:
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         go run cmd/generate_attestation/main.go --url https://token.actions.githubusercontent.com/.well-known/jwks --attestation-file ${{ env.ATTESTATION_FILE }}
-    
-    - name: Check for content changes
-      id: check_changes
-      run: |
-        # Use previous JWKS attestation if it exists
-        if [ -f "${{ env.PREVIOUS_ATTESTATION_FILE }}" ]; then
-          echo "Previous attestation found, comparing content..."
-          CURRENT_DIGEST=$(jq -r '.payload.content_digest' ${{ env.ATTESTATION_FILE }})
-          PREVIOUS_DIGEST=$(jq -r '.payload.content_digest' ${{ env.PREVIOUS_ATTESTATION_FILE }})
-          
-          if [ "$CURRENT_DIGEST" = "$PREVIOUS_DIGEST" ]; then
-            echo "JWKS content unchanged"
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "JWKS content has changed"
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-        else
-          echo "No previous attestation found, assuming content changed"
-          echo "changed=true" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: Create release if content changed
-      if: steps.check_changes.outputs.changed == 'true'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Get current timestamp for release name
-        TIMESTAMP=$(date -u +"%Y%m%d-%H%M%S")
-        RELEASE_NAME="attestation-change-$TIMESTAMP"
-        
-        # Get commit SHA from attestation
-        COMMIT_SHA=$(jq -r '.payload.commit_sha' ${{ env.ATTESTATION_FILE }})
-        
-        # Create release
-        gh release create "$RELEASE_NAME" \
-          --title "JWKS Content Change Detected" \
-          --notes "JWKS content has changed at $(date -u +"%Y-%m-%d %H:%M:%S UTC")
-        
-        Commit SHA: $COMMIT_SHA
-        
-        This release contains the attestation proving the JWKS content change." \
-          ${{ env.ATTESTATION_FILE }}
     
     - name: Upload JWKS attestation as artifact
       uses: actions/upload-artifact@v4
