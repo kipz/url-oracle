@@ -18,6 +18,9 @@ import (
 	"github.com/openpubkey/openpubkey/providers"
 )
 
+// Define previous attestation filename to avoid typos
+const previousAttestationFile = "previous_attestation.json"
+
 // fetchPreviousAttestation attempts to fetch a previous attestation using the workflow reference
 func fetchPreviousAttestation(workflowRef string) (*attestation.Attestation, error) {
 	// Parse owner, repo, workflow file from workflowRef (format: owner/repo/.github/workflows/filename.yml@ref)
@@ -64,8 +67,8 @@ func fetchPreviousAttestation(workflowRef string) (*attestation.Attestation, err
 			return nil, fmt.Errorf("failed to fetch previous attestation: %w", err)
 		}
 	}
-	// Load previous_attestation.json and return it
-	prevAttestationPath := "previous_attestation.json"
+	// Load previous attestation file and return it
+	prevAttestationPath := previousAttestationFile
 	if _, err := os.Stat(prevAttestationPath); err == nil {
 		prevAttestation, err := attestation.LoadAttestation(prevAttestationPath)
 		if err != nil {

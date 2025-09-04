@@ -7,6 +7,10 @@
 
 set -e
 
+# Define attestation filenames to avoid typos
+ATTESTATION_FILE="attestation.json"
+PREVIOUS_ATTESTATION_FILE="previous_attestation.json"
+
 # Parse arguments
 VERIFY=true
 ARGS=()
@@ -86,17 +90,17 @@ echo "Using workflow run ID: $RUN_ID"
 
 # Get artifact ID for attestation.json
 if [ -n "$CALLER_TOKEN" ]; then
-    ARTIFACT_ID=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+    ARTIFACT_ID=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'") | .id')
 else
-    ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "attestation.json") | .id')
+    ARTIFACT_ID=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'") | .id')
 fi
 
 if [ -z "$ARTIFACT_ID" ]; then
-    echo "attestation.json artifact not found" >&2
+    echo "$ATTESTATION_FILE artifact not found" >&2
     exit 2
 fi
 
-echo "Found attestation.json artifact ID: $ARTIFACT_ID"
+echo "Found $ATTESTATION_FILE artifact ID: $ARTIFACT_ID"
 
 # Download the artifact
 echo "Downloading artifact..."
@@ -107,12 +111,12 @@ else
 fi
 
 # Extract and save the JSON
-echo "Extracting attestation.json..."
-unzip -p attestation.zip attestation.json > previous_attestation.json
+echo "Extracting $ATTESTATION_FILE..."
+unzip -p attestation.zip "$ATTESTATION_FILE" > "$PREVIOUS_ATTESTATION_FILE"
 
 # Extract commit SHA from attestation
 echo "Extracting commit SHA from attestation..."
-COMMIT_SHA=$(jq -r '.payload.commit_sha' previous_attestation.json)
+COMMIT_SHA=$(jq -r '.payload.commit_sha' "$PREVIOUS_ATTESTATION_FILE")
 echo "Found commit SHA: $COMMIT_SHA"
 
 # Clean up
@@ -149,12 +153,12 @@ if [ "$VERIFY" = true ]; then
     fi
 
     # Copy attestation.json to the checked out repository
-    echo "Copying attestation.json to verification directory..."
-    cp "../previous_attestation.json" ./attestation.json
+    echo "Copying $ATTESTATION_FILE to verification directory..."
+    cp "../$PREVIOUS_ATTESTATION_FILE" "./$ATTESTATION_FILE"
 
     # Run verification
     echo "Running attestation verification..."
-    if go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json; then
+    if go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file "$ATTESTATION_FILE"; then
         echo "✅ Attestation verification successful!"
         VERIFICATION_RESULT="SUCCESS"
     else

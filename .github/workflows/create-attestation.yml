@@ -21,16 +21,22 @@ jobs:
       uses: actions/checkout@v4
       with:
         repository: kipz/url-oracle
+    
+    - name: Set attestation filenames
+      run: |
+        echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
+        echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+    
     - name: Generate OpenPubkey attestation
       env:  
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       id: attestation
       run: |
-        go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --attestation-file attestation.json --skip-previous
+        go run cmd/generate_attestation/main.go --url ${{ inputs.url }} --attestation-file ${{ env.ATTESTATION_FILE }} --skip-previous
 
     - name: Upload attestation as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: attestation.json
-        path: attestation.json
+        name: ${{ env.ATTESTATION_FILE }}
+        path: ${{ env.ATTESTATION_FILE }}
         retention-days: 30

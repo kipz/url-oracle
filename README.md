@@ -172,15 +172,21 @@ The system automatically attempts to fetch and verify against previous attestati
 When using the Create Attestation workflow, the generated attestation is automatically uploaded as a job artifact. Other workflows can download this artifact using the following pattern:
 
 ```yaml
+- name: Set attestation filenames
+  run: |
+    echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
+    echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+
 - name: Download attestation artifact
   uses: actions/download-artifact@v4
   with:
-    name: attestation.json
+    name: ${{ env.ATTESTATION_FILE }}
     path: .
 
 - name: Use attestation
   run: |
-    echo "Attestation downloaded to: $(pwd)/attestation.json"
+    echo "Attestation downloaded to: $(pwd)/${{ env.ATTESTATION_FILE }}"
+    echo "Previous attestation file: ${{ env.PREVIOUS_ATTESTATION_FILE }}"
     # Process the attestation file as needed
 ```
 

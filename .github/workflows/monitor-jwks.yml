@@ -20,20 +20,25 @@ jobs:
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
     
+    - name: Set attestation filenames
+      run: |
+        echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
+        echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+    
     - name: Generate JWKS attestation
       env:
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        go run cmd/generate_attestation/main.go --url https://token.actions.githubusercontent.com/.well-known/jwks --attestation-file attestation.json
+        go run cmd/generate_attestation/main.go --url https://token.actions.githubusercontent.com/.well-known/jwks --attestation-file ${{ env.ATTESTATION_FILE }}
     
     - name: Check for content changes
       id: check_changes
       run: |
         # Use previous JWKS attestation if it exists
-        if [ -f "previous-attestation.json" ]; then
+        if [ -f "${{ env.PREVIOUS_ATTESTATION_FILE }}" ]; then
           echo "Previous attestation found, comparing content..."
-          CURRENT_DIGEST=$(jq -r '.payload.content_digest' attestation.json)
-          PREVIOUS_DIGEST=$(jq -r '.payload.content_digest' previous-attestation.json)
+          CURRENT_DIGEST=$(jq -r '.payload.content_digest' ${{ env.ATTESTATION_FILE }})
+          PREVIOUS_DIGEST=$(jq -r '.payload.content_digest' ${{ env.PREVIOUS_ATTESTATION_FILE }})
           
           if [ "$CURRENT_DIGEST" = "$PREVIOUS_DIGEST" ]; then
             echo "JWKS content unchanged"
@@ -57,7 +62,7 @@ jobs:
         RELEASE_NAME="attestation-change-$TIMESTAMP"
         
         # Get commit SHA from attestation
-        COMMIT_SHA=$(jq -r '.payload.commit_sha' attestation.json)
+        COMMIT_SHA=$(jq -r '.payload.commit_sha' ${{ env.ATTESTATION_FILE }})
         
         # Create release
         gh release create "$RELEASE_NAME" \
@@ -67,11 +72,11 @@ jobs:
         Commit SHA: $COMMIT_SHA
         
         This release contains the attestation proving the JWKS content change." \
-          attestation.json
+          ${{ env.ATTESTATION_FILE }}
     
     - name: Upload JWKS attestation as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: jwks-attestation.json
-        path: jwks-attestation.json
+        name: ${{ env.ATTESTATION_FILE }}
+        path: ${{ env.ATTESTATION_FILE }}
         retention-days: 30

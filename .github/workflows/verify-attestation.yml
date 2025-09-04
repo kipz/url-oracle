@@ -8,14 +8,19 @@ jobs:
     permissions:
       id-token: write
     steps:
+    - name: Set attestation filenames
+      run: |
+        echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
+        echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+    
     - name: Download attestation
       uses: actions/download-artifact@v4
       with:
-        name: attestation.json
+        name: ${{ env.ATTESTATION_FILE }}
     - name: Extract commit SHA from attestation
       id: extract_commit_sha
       run: |
-        COMMIT_SHA=$(jq -r '.payload.commit_sha' attestation.json)
+        COMMIT_SHA=$(jq -r '.payload.commit_sha' ${{ env.ATTESTATION_FILE }})
         echo "COMMIT_SHA=$COMMIT_SHA" >> $GITHUB_ENV
     - name: Checkout repository at commit SHA
       uses: actions/checkout@v4
@@ -25,10 +30,10 @@ jobs:
     - name: Download attestation again
       uses: actions/download-artifact@v4
       with:
-        name: attestation.json
+        name: ${{ env.ATTESTATION_FILE }}
     - name: Verify attestation
       run: |
-        go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file attestation.json
+        go run cmd/verify_attestation/main.go cmd/verify_attestation/verifier.go --attestation-file ${{ env.ATTESTATION_FILE }}
 
     - name: Comment on commit (if possible)
       run: |
