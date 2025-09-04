@@ -62,16 +62,7 @@ func LoadAttestation(attestationFile string) (*Attestation, error) {
 }
 
 // CreateAttestationPayload creates a new attestation payload with the given parameters
-func CreateAttestationPayload(prevAttestation *Attestation, commitSHA, timestamp, url string, content []byte, contentDigest []byte, contentSize int64) (*AttestationPayload, error) {
-	var prevDigest []byte
-	if prevAttestation != nil {
-		var err error
-		prevDigest, err = prevAttestation.Payload.Hash()
-		if err != nil {
-			return nil, fmt.Errorf("failed to create digest of previous attestation: %w", err)
-		}
-	}
-
+func CreateAttestationPayload(previousAttestationDigest []byte, commitSHA, timestamp, url string, content []byte, contentDigest []byte, contentSize int64) (*AttestationPayload, error) {
 	return &AttestationPayload{
 		CommitSHA:             commitSHA,
 		Timestamp:             timestamp,
@@ -79,7 +70,7 @@ func CreateAttestationPayload(prevAttestation *Attestation, commitSHA, timestamp
 		Content:               content,
 		ContentDigest:         contentDigest,
 		ContentSize:           contentSize,
-		PrevAttestationDigest: prevDigest,
+		PrevAttestationDigest: previousAttestationDigest,
 	}, nil
 }
 

@@ -153,18 +153,22 @@ func generateOpenPubkeyAttestation(url string, content, contentDigest []byte, co
 	}
 
 	// Fetch previous attestation (if not skipped)
-	var prevAttestation *attestation.Attestation
+	var prevAttestationDigest []byte
 	if !skipPrevious {
-		prevAttestation, err = fetchPreviousAttestation(workflowRef)
+		prevAttestation, err := fetchPreviousAttestation(workflowRef)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch previous attestation: %w", err)
+		}
+		prevAttestationDigest, err = prevAttestation.Payload.Hash()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create digest of previous attestation: %w", err)
 		}
 	} else {
 		fmt.Println("⏭️  Skipping previous attestation fetch (--skip-previous flag set)")
 	}
 
 	// Create attestation payload with extracted values
-	payload, err := attestation.CreateAttestationPayload(prevAttestation, commitSHA, timestamp, url, content, contentDigest, contentSize)
+	payload, err := attestation.CreateAttestationPayload(prevAttestationDigest, commitSHA, timestamp, url, content, contentDigest, contentSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create attestation payload: %w", err)
 	}
