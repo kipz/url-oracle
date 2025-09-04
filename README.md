@@ -28,9 +28,9 @@ The URL Oracle is used via **reusable workflows** rather than direct action call
 
 ### Available Workflows
 
-The URL Oracle provides two reusable workflows:
+The URL Oracle provides three workflows:
 
-#### 1. Create Attestation Workflow
+#### 1. Create Attestation Workflow (Reusable)
 Creates a new OpenPubkey attestation for the specified URL.
 
 ```yaml
@@ -42,7 +42,7 @@ Creates a new OpenPubkey attestation for the specified URL.
     token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-#### 2. Verify Attestation Workflow
+#### 2. Verify Attestation Workflow (Reusable)
 Verifies the authenticity and integrity of an attestation.
 
 ```yaml
@@ -51,6 +51,14 @@ Verifies the authenticity and integrity of an attestation.
   secrets:
     token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+#### 3. Monitor JWKS Workflow (Scheduled)
+Automatically monitors GitHub's JWKS endpoint every 2 hours and creates attestations when content changes.
+
+- **Schedule**: Runs every 2 hours (`0 */2 * * *`)
+- **Manual Trigger**: Supports `workflow_dispatch` for manual execution
+- **Purpose**: Monitors `https://token.actions.githubusercontent.com/.well-known/jwks`
+- **Output**: Uploads attestation as artifact for 30 days
 
 ## Workflow Inputs
 
@@ -137,7 +145,7 @@ The verification process performs **8 comprehensive checks**:
 | `content` | string | The actual content retrieved from the URL |
 | `content_digest` | string | SHA256 digest of the content |
 | `content_size` | number | Size of the content in bytes |
-| `prev_attestation_digest` | string | SHA256 digest of the previous attestation (if any) |
+| `prev_attestation_digest` | string | SHA256 digest of the previous attestation payload (if any) |
 
 
 ## Security Features
@@ -156,6 +164,7 @@ The verification process performs **8 comprehensive checks**:
 - **Digest Comparison**: Only creates new attestations when content actually changes
 - **Size Validation**: Tracks both content digest and size for comprehensive change detection
 - **Metadata Preservation**: Maintains repository and creation context
+- **Efficient Storage**: Uses digest comparison instead of storing full previous attestations
 
 ## Artifact Management
 
@@ -163,9 +172,11 @@ The verification process performs **8 comprehensive checks**:
 
 The Create Attestation workflow automatically uploads the generated attestation as a job artifact named `attestation.json` with a 30-day retention period. Other workflows can download this artifact using the `actions/download-artifact@v4` action.
 
+**Note**: All workflows use environment variables (`ATTESTATION_FILE` and `PREVIOUS_ATTESTATION_FILE`) to avoid typos and ensure consistency across the codebase.
+
 ### Previous Attestation Integration
 
-The system automatically attempts to fetch and verify against previous attestations from the same workflow, creating a chain of attestations that can be used to detect content changes and maintain historical integrity.
+The system automatically attempts to fetch and verify against previous attestations from the same workflow, creating a chain of attestations that can be used to detect content changes and maintain historical integrity. The system uses digest comparison to efficiently detect content changes without storing full previous attestations.
 
 ## Downloading Attestation Artifacts
 
@@ -191,6 +202,28 @@ When using the Create Attestation workflow, the generated attestation is automat
 ```
 
 **Note**: The artifact is retained for 30 days and can be downloaded by any workflow that has access to the repository.
+
+## Monitor Workflow Behavior
+
+The Monitor JWKS workflow (`monitor-jwks.yml`) provides automated monitoring of GitHub's JWKS endpoint:
+
+### Schedule and Execution
+- **Frequency**: Runs every 2 hours (`0 */2 * * *`)
+- **Manual Trigger**: Can be triggered manually via `workflow_dispatch`
+- **Target URL**: `https://token.actions.githubusercontent.com/.well-known/jwks`
+
+### Workflow Steps
+1. **Checkout Repository**: Checks out the current repository state
+2. **Set Variables**: Defines `ATTESTATION_FILE` and `PREVIOUS_ATTESTATION_FILE` environment variables
+3. **Generate Attestation**: Creates a new attestation for the JWKS content
+4. **Upload Artifact**: Uploads the attestation as a job artifact with 30-day retention
+
+### Simplified Design
+The current implementation focuses on:
+- **Reliable Monitoring**: Consistent 2-hour intervals
+- **Artifact Storage**: All attestations are stored as artifacts
+- **Variable Consistency**: Uses environment variables to prevent typos
+- **Digest-Based Change Detection**: Efficiently detects content changes using digest comparison
 
 ### Go Programs
 - **`cmd/generate_attestation/main.go`**: Generates OpenPubkey attestations (used by both workflows)
