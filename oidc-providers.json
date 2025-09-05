@@ -1,0 +1,28 @@
+{
+  "providers": [
+    {
+      "name": "GitHub",
+      "url": "https://token.actions.githubusercontent.com/.well-known/jwks",
+      "description": "GitHub Actions OIDC provider for workload identity",
+      "enabled": true
+    },
+    {
+      "name": "Google",
+      "url": "https://accounts.google.com/.well-known/jwks",
+      "description": "Google OIDC provider for user authentication",
+      "enabled": true
+    },
+    {
+      "name": "Microsoft",
+      "url": "https://login.microsoftonline.com/common/discovery/v2.0/keys",
+      "description": "Microsoft Azure AD OIDC provider for authentication",
+      "enabled": true
+    },
+    {
+      "name": "GitLab",
+      "url": "https://gitlab.com/.well-known/jwks",
+      "description": "GitLab OIDC provider for user authentication",
+      "enabled": true
+    }
+  ]
+}

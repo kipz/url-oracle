@@ -52,13 +52,14 @@ Verifies the authenticity and integrity of an attestation.
     token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-#### 3. Monitor JWKS Workflow (Scheduled)
-Automatically monitors GitHub's JWKS endpoint every 2 hours and creates attestations when content changes.
+#### 3. Monitor OIDC JWKS Workflow (Scheduled)
+Automatically monitors multiple OIDC provider JWKS endpoints every 2 hours and creates attestations when content changes.
 
 - **Schedule**: Runs every 2 hours (`0 */2 * * *`)
 - **Manual Trigger**: Supports `workflow_dispatch` for manual execution
-- **Purpose**: Monitors `https://token.actions.githubusercontent.com/.well-known/jwks`
-- **Output**: Uploads attestation as artifact for 30 days
+- **Purpose**: Monitors JWKS endpoints for all OpenPubkey-supported OIDC providers
+- **Providers**: GitHub, Google, Microsoft, GitLab
+- **Output**: Uploads separate attestation artifacts for each provider (30-day retention)
 
 ## Workflow Inputs
 
@@ -163,7 +164,7 @@ The verification process performs **6 comprehensive checks**:
 
 ### Attestation Artifacts
 
-The Create Attestation workflow automatically uploads the generated attestation as a job artifact named `attestation.json` with a 30-day retention period. Other workflows can download this artifact using the `actions/download-artifact@v4` action.
+The Create Attestation workflow automatically uploads the generated attestation as a job artifact named `attestation.json` with a 30-day retention period. The Monitor OIDC JWKS workflow uploads separate artifacts for each provider (e.g., `attestation-github.json`, `attestation-google.json`). Other workflows can download these artifacts using the `actions/download-artifact@v4` action.
 
 ### Previous Attestation Integration
 
@@ -198,30 +199,73 @@ When using the Create Attestation workflow, the generated attestation is automat
 
 ## Monitor Workflow Behavior
 
-The Monitor JWKS workflow (`monitor-jwks.yml`) provides automated monitoring of GitHub's JWKS endpoint:
+The Monitor OIDC JWKS workflow (`monitor-jwks.yml`) provides automated monitoring of multiple OIDC provider JWKS endpoints:
 
 ### Schedule and Execution
 - **Frequency**: Runs every 2 hours (`0 */2 * * *`)
 - **Manual Trigger**: Can be triggered manually via `workflow_dispatch`
-- **Target URL**: `https://token.actions.githubusercontent.com/.well-known/jwks`
+- **Matrix Strategy**: Monitors multiple providers in parallel
+
+### Supported OIDC Providers
+The workflow monitors the following OpenPubkey-supported OIDC providers:
+
+| Provider | JWKS Endpoint | Purpose |
+|----------|---------------|---------|
+| **GitHub** | `https://token.actions.githubusercontent.com/.well-known/jwks` | GitHub Actions workload identity |
+| **Google** | `https://accounts.google.com/.well-known/jwks` | Google user authentication |
+| **Microsoft** | `https://login.microsoftonline.com/common/discovery/v2.0/keys` | Azure AD authentication |
+| **GitLab** | `https://gitlab.com/.well-known/jwks` | GitLab user authentication |
 
 ### Workflow Steps
 1. **Checkout Repository**: Checks out the current repository state
-2. **Set Variables**: Defines `ATTESTATION_FILE`, `PREVIOUS_ATTESTATION_FILE`, and `EXPECTED_WORKFLOW_REF` environment variables
-3. **Generate Attestation**: Creates a new attestation for the JWKS content
-4. **Upload Artifact**: Uploads the attestation as a job artifact with 30-day retention
+2. **Set Variables**: Defines provider-specific environment variables
+3. **Generate Attestation**: Creates a new attestation for each provider's JWKS content
+4. **Upload Artifact**: Uploads separate attestation artifacts for each provider (30-day retention)
 
-### Simplified Design
+### Multi-Provider Design
 The current implementation focuses on:
-- **Reliable Monitoring**: Consistent 2-hour intervals
-- **Artifact Storage**: All attestations are stored as artifacts
+- **Parallel Monitoring**: All providers monitored simultaneously using matrix strategy
+- **Provider-Specific Artifacts**: Each provider gets its own attestation file
+- **Reliable Monitoring**: Consistent 2-hour intervals across all providers
 - **Variable Consistency**: Uses environment variables to prevent typos
 - **Digest-Based Change Detection**: Efficiently detects content changes using digest comparison
+
+### Provider Configuration
+The OIDC providers are configured in `oidc-providers.json`:
+
+```json
+{
+  "providers": [
+    {
+      "name": "GitHub",
+      "url": "https://token.actions.githubusercontent.com/.well-known/jwks",
+      "description": "GitHub Actions OIDC provider for workload identity",
+      "enabled": true
+    },
+    {
+      "name": "Google",
+      "url": "https://accounts.google.com/.well-known/jwks",
+      "description": "Google OIDC provider for user authentication",
+      "enabled": true
+    }
+  ]
+}
+```
+
+#### Managing Providers
+- **Enable/Disable**: Set `"enabled": true/false` to control which providers are monitored
+- **Add New Providers**: Add new entries to the `providers` array
+- **Update URLs**: Modify the `url` field for existing providers
+- **Generate Matrix**: Use `scripts/generate-provider-matrix.sh` to generate GitHub Actions matrix configuration
 
 ### Go Programs
 - **`cmd/generate_attestation/main.go`**: Generates OpenPubkey attestations (used by both workflows)
 - **`cmd/verify_attestation/main.go`**: Verifies attestation authenticity
 - **`cmd/verify_attestation/verifier.go`**: Core verification logic
+
+### Configuration Files
+- **`oidc-providers.json`**: Configuration file defining supported OIDC providers and their JWKS endpoints
+- **`scripts/generate-provider-matrix.sh`**: Script to generate GitHub Actions matrix configuration from provider config
 
 ### Build Process
 1. **Go modules** manage dependencies

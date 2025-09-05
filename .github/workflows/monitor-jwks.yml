@@ -1,4 +1,4 @@
-name: Monitor JWKS
+name: Monitor OIDC JWKS
 
 on:
   schedule:
@@ -9,6 +9,21 @@ on:
 jobs:
   monitor-jwks:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: "GitHub"
+            url: "https://token.actions.githubusercontent.com/.well-known/jwks"
+            description: "GitHub Actions OIDC provider for workload identity"
+          - name: "Google"
+            url: "https://accounts.google.com/.well-known/jwks"
+            description: "Google OIDC provider for user authentication"
+          - name: "Microsoft"
+            url: "https://login.microsoftonline.com/common/discovery/v2.0/keys"
+            description: "Microsoft Azure AD OIDC provider for authentication"
+          - name: "GitLab"
+            url: "https://gitlab.com/.well-known/jwks"
+            description: "GitLab OIDC provider for user authentication"
     permissions:
       id-token: write
       contents: write
@@ -22,17 +37,21 @@ jobs:
     
     - name: Set attestation filenames and workflow reference
       run: |
-        echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
-        echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
+        PROVIDER_LOWER=$(echo "${{ matrix.name }}" | tr '[:upper:]' '[:lower:]')
+        echo "ATTESTATION_FILE=attestation-${PROVIDER_LOWER}.json" >> $GITHUB_ENV
+        echo "PREVIOUS_ATTESTATION_FILE=previous-attestation-${PROVIDER_LOWER}.json" >> $GITHUB_ENV
         echo "EXPECTED_WORKFLOW_REF=${{ github.workflow_ref }}" >> $GITHUB_ENV
+        echo "PROVIDER_NAME=${{ matrix.name }}" >> $GITHUB_ENV
+        echo "PROVIDER_URL=${{ matrix.url }}" >> $GITHUB_ENV
     
-    - name: Generate JWKS attestation
+    - name: Generate JWKS attestation for ${{ matrix.name }}
       env:
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        go run cmd/generate_attestation/main.go --url https://token.actions.githubusercontent.com/.well-known/jwks --attestation-file ${{ env.ATTESTATION_FILE }}
+        echo "🔍 Monitoring ${{ matrix.name }} JWKS endpoint: ${{ matrix.url }}"
+        go run cmd/generate_attestation/main.go --url "${{ matrix.url }}" --attestation-file ${{ env.ATTESTATION_FILE }}
     
-    - name: Upload JWKS attestation as artifact
+    - name: Upload ${{ matrix.name }} JWKS attestation as artifact
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ATTESTATION_FILE }}
