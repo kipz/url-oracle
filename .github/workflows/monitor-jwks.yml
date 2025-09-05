@@ -40,7 +40,9 @@ jobs:
         PROVIDER_LOWER=$(echo "${{ matrix.name }}" | tr '[:upper:]' '[:lower:]')
         echo "ATTESTATION_FILE=attestation-${PROVIDER_LOWER}.json" >> $GITHUB_ENV
         echo "PREVIOUS_ATTESTATION_FILE=previous-attestation-${PROVIDER_LOWER}.json" >> $GITHUB_ENV
-        echo "EXPECTED_WORKFLOW_REF=${{ github.workflow_ref }}" >> $GITHUB_ENV
+        # Construct job_workflow_ref in the format: owner/repo/.github/workflows/workflow-file@ref
+        JOB_WORKFLOW_REF="${{ github.repository }}/.github/workflows/monitor-jwks.yml@${{ github.ref }}"
+        echo "EXPECTED_WORKFLOW_REF=${JOB_WORKFLOW_REF}" >> $GITHUB_ENV
         echo "PROVIDER_NAME=${{ matrix.name }}" >> $GITHUB_ENV
         echo "PROVIDER_URL=${{ matrix.url }}" >> $GITHUB_ENV
     

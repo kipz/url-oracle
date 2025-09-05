@@ -26,7 +26,9 @@ jobs:
       run: |
         echo "ATTESTATION_FILE=attestation.json" >> $GITHUB_ENV
         echo "PREVIOUS_ATTESTATION_FILE=previous_attestation.json" >> $GITHUB_ENV
-        echo "EXPECTED_WORKFLOW_REF=${{ github.workflow_ref }}" >> $GITHUB_ENV
+        # Construct job_workflow_ref in the format: owner/repo/.github/workflows/workflow-file@ref
+        JOB_WORKFLOW_REF="${{ github.repository }}/.github/workflows/create-attestation.yml@${{ github.ref }}"
+        echo "EXPECTED_WORKFLOW_REF=${JOB_WORKFLOW_REF}" >> $GITHUB_ENV
     
     - name: Generate OpenPubkey attestation
       env:  

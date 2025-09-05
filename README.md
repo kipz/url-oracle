@@ -102,6 +102,7 @@ The verification process performs **6 comprehensive checks**:
 - Verifies the PK token's `job_workflow_ref` matches the expected workflow
 - Ensures the attestation was created by the correct workflow
 - Uses environment variable `EXPECTED_WORKFLOW_REF` for dynamic verification
+- Format: `{owner}/{repo}/.github/workflows/{workflow-file}@{ref}`
 
 ### 6. Workflow SHA Verification
 - Verifies the PK token's `job_workflow_sha` matches the expected commit SHA
