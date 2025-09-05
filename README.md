@@ -79,7 +79,7 @@ Automatically monitors GitHub's JWKS endpoint every 2 hours and creates attestat
 
 ## Attestation Verification
 
-The verification process performs **8 comprehensive checks**:
+The verification process performs **6 comprehensive checks**:
 
 ### 1. PK Token Verification
 - Verifies the OpenPubkey token is issued by the expected provider
@@ -97,21 +97,14 @@ The verification process performs **8 comprehensive checks**:
 - Recreates the attestation payload and generates a digest
 - Compares with the signed message to ensure consistency
 
-### 5. Commit SHA Verification
-- Verifies the attestation's commit SHA matches the current repository
-- Prevents replay attacks using old attestations from different commits
-
-### 6. Workflow Reference Verification
+### 5. Workflow Reference Verification
 - Verifies the PK token's `job_workflow_ref` matches the expected workflow
 - Ensures the attestation was created by the correct workflow
+- Uses environment variable `EXPECTED_WORKFLOW_REF` for dynamic verification
 
-### 7. Workflow SHA Verification
+### 6. Workflow SHA Verification
 - Verifies the PK token's `job_workflow_sha` matches the expected commit SHA
 - Prevents replay attacks using old workflow versions
-
-### 8. Oracle Verification
-- Ensures the attestation was created by this specific oracle
-- Prevents cross-oracle attestation forgery
 
 ## JSON Format
 
@@ -214,7 +207,7 @@ The Monitor JWKS workflow (`monitor-jwks.yml`) provides automated monitoring of 
 
 ### Workflow Steps
 1. **Checkout Repository**: Checks out the current repository state
-2. **Set Variables**: Defines `ATTESTATION_FILE` and `PREVIOUS_ATTESTATION_FILE` environment variables
+2. **Set Variables**: Defines `ATTESTATION_FILE`, `PREVIOUS_ATTESTATION_FILE`, and `EXPECTED_WORKFLOW_REF` environment variables
 3. **Generate Attestation**: Creates a new attestation for the JWKS content
 4. **Upload Artifact**: Uploads the attestation as a job artifact with 30-day retention
 
