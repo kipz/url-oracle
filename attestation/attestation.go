@@ -32,7 +32,7 @@ type AttestationPayload struct {
 
 // AttestationDetails represents the details of the previous attestation
 type AttestationDetails struct {
-	Digest      []byte `json:"digest"`
+	Digest      string `json:"digest"`
 	ArtifactURL string `json:"artifact_url"` // stable for max 30 days
 }
 
