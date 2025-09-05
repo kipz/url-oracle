@@ -19,7 +19,7 @@ import (
 const previousAttestationDetailsFile = "previous_attestation_details.json"
 
 // fetchPreviousAttestationDetails attempts to fetch a previous attestation details using the workflow reference
-func fetchPreviousAttestationDetails(claims *attestation.IDTokenClaims, attestationFileName string) (*attestation.AttestationDetails, error) {
+func fetchPreviousAttestationDetails(claims *attestation.IDTokenClaims, attestationFileName string) ([]byte, error) {
 	// Parse owner, repo, workflow file from workflowRef (format: owner/repo/.github/workflows/filename.yml@ref)
 	// Example: kipz/url-oracle/.github/workflows/create-attestation.yml@refs/heads/main
 	parts := strings.Split(claims.WorkflowRef, "@")
@@ -67,7 +67,7 @@ func fetchPreviousAttestationDetails(claims *attestation.IDTokenClaims, attestat
 	// Load previous attestation file and return it
 	prevAttestationDetailsPath := previousAttestationDetailsFile
 	if _, err := os.Stat(prevAttestationDetailsPath); err == nil {
-		details, err := attestation.LoadAttestationDetails(prevAttestationDetailsPath)
+		details, err := os.ReadFile(prevAttestationDetailsPath)
 		if err != nil {
 			fmt.Printf("⚠️  Warning: Failed to load previous attestation details: %v\n", err)
 			return nil, fmt.Errorf("failed to load previous attestation details: %w", err)
@@ -152,7 +152,7 @@ func createAttestation(attestationFileName string, url string, content []byte, c
 	}
 
 	// Fetch previous attestation (if not skipped)
-	var prevAttestationDetails *attestation.AttestationDetails
+	var prevAttestationDetails []byte
 	if !skipPrevious {
 		prevAttestationDetails, err = fetchPreviousAttestationDetails(claims, attestationFileName)
 		if err != nil {

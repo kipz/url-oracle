@@ -93,11 +93,9 @@ echo "Using workflow run ID: $RUN_ID"
 if [ -n "$CALLER_TOKEN" ]; then
     ARTIFACT=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE_NAME"'")')
     ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
-    DIGEST=$(echo "$ARTIFACT" | jq -r '.digest')
 else
     ARTIFACT=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE_NAME"'")')
     ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
-    DIGEST=$(echo "$ARTIFACT" | jq -r '.digest')
 fi
 
 if [ -z "$ARTIFACT_ID" ]; then
@@ -169,7 +167,7 @@ if [ "$VERIFY" = true ]; then
     fi
     # Create previous attestation details file (Digest, Run URL, Filename)
     echo "Creating previous attestation details file..."
-    echo "{\"digest\":\"$DIGEST\",\"artifact_url\":\"$ARTIFACT_URL\"}" > "$PREVIOUS_ATTESTATION_DETAILS_FILE"
+    echo "$ARTIFACT" > "$PREVIOUS_ATTESTATION_DETAILS_FILE"
     cp "$PREVIOUS_ATTESTATION_DETAILS_FILE" "../$PREVIOUS_ATTESTATION_DETAILS_FILE"
     
 

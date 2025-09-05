@@ -21,13 +21,13 @@ const (
 
 // AttestationPayload represents the attestation data (protected by the signature)
 type AttestationPayload struct {
-	CommitSHA           string              `json:"commit_sha"`
-	Timestamp           string              `json:"timestamp"`
-	Url                 string              `json:"url"`
-	Content             []byte              `json:"content"`
-	ContentDigest       string              `json:"content_digest"`
-	ContentSize         int64               `json:"content_size"`
-	PreviousAttestation *AttestationDetails `json:"previous_attestation"`
+	CommitSHA           string `json:"commit_sha"`
+	Timestamp           string `json:"timestamp"`
+	Url                 string `json:"url"`
+	Content             []byte `json:"content"`
+	ContentDigest       string `json:"content_digest"`
+	ContentSize         int64  `json:"content_size"`
+	PreviousAttestation []byte `json:"previous_attestation"`
 }
 
 // AttestationDetails represents the details of the previous attestation
@@ -83,7 +83,7 @@ func LoadAttestationDetails(attestationDetailsFile string) (*AttestationDetails,
 }
 
 // CreateAttestationPayload creates a new attestation payload with the given parameters
-func CreateAttestationPayload(timestamp string, commitSHA string, previousAttestation *AttestationDetails, url string, content []byte, contentDigest string, contentSize int64) (*AttestationPayload, error) {
+func CreateAttestationPayload(timestamp string, commitSHA string, previousAttestation []byte, url string, content []byte, contentDigest string, contentSize int64) (*AttestationPayload, error) {
 	return &AttestationPayload{
 		CommitSHA:           commitSHA,
 		Timestamp:           timestamp,
