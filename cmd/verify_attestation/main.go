@@ -51,10 +51,8 @@ func main() {
 
 	// Exit with appropriate code
 	if result.IsVerificationSuccessful() {
-		fmt.Println("✅ Attestation verified successfully")
 		os.Exit(0)
 	} else {
-		fmt.Println("❌ Attestation verification failed")
 		os.Exit(1)
 	}
 }

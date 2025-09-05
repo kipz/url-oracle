@@ -91,21 +91,21 @@ echo "Using workflow run ID: $RUN_ID"
 
 # Get artifact ID for attestation.json
 if [ -n "$CALLER_TOKEN" ]; then
-    ARTIFACT=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'")')
+    ARTIFACT=$(GH_TOKEN="$CALLER_TOKEN" gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE_NAME"'")')
     ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
     DIGEST=$(echo "$ARTIFACT" | jq -r '.digest')
 else
-    ARTIFACT=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE"'")')
+    ARTIFACT=$(gh api "/repos/$REPO/actions/runs/$RUN_ID/artifacts" --jq '.artifacts[] | select(.name == "'"$ATTESTATION_FILE_NAME"'")')
     ARTIFACT_ID=$(echo "$ARTIFACT" | jq -r '.id')
     DIGEST=$(echo "$ARTIFACT" | jq -r '.digest')
 fi
 
 if [ -z "$ARTIFACT_ID" ]; then
-    echo "$ATTESTATION_FILE artifact not found" >&2
+    echo "$ATTESTATION_FILE_NAME artifact not found" >&2
     exit 2
 fi
 
-echo "Found $ATTESTATION_FILE artifact ID: $ARTIFACT_ID"
+echo "Found $ATTESTATION_FILE_NAME artifact ID: $ARTIFACT_ID"
 
 # Download the artifact
 ARTIFACT_URL="/repos/$REPO/actions/artifacts/$ARTIFACT_ID/zip"
@@ -117,8 +117,8 @@ else
 fi
 
 # Extract and save the JSON
-echo "Extracting $ATTESTATION_FILE..."
-unzip -p attestation.zip "$ATTESTATION_FILE" > "$PREVIOUS_ATTESTATION_FILE"
+echo "Extracting $ATTESTATION_FILE_NAME..."
+unzip -p attestation.zip "$ATTESTATION_FILE_NAME" > "$PREVIOUS_ATTESTATION_FILE"
 
 # Extract commit SHA from attestation
 echo "Extracting commit SHA from attestation..."
@@ -170,6 +170,7 @@ if [ "$VERIFY" = true ]; then
     # Create previous attestation details file (Digest, Run URL, Filename)
     echo "Creating previous attestation details file..."
     echo "{\"digest\":\"$DIGEST\",\"artifact_url\":\"$ARTIFACT_URL\"}" > "$PREVIOUS_ATTESTATION_DETAILS_FILE"
+    cp "$PREVIOUS_ATTESTATION_DETAILS_FILE" "../$PREVIOUS_ATTESTATION_DETAILS_FILE"
     
 
     # Clean up verification directory

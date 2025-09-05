@@ -139,16 +139,6 @@ func (vr *VerificationResult) GetSummary() string {
 	return summary
 }
 
-// verifyCommitSHA checks if the attestation commit SHA matches the current repository commit SHA
-func verifyCommitSHA(attestationCommitSHA string, currentCommitSHA string) (bool, error) {
-	// Compare commit SHAs
-	if attestationCommitSHA == currentCommitSHA {
-		return true, nil
-	}
-
-	return false, nil
-}
-
 // verifyWorkflowRef checks if the PK token's job_workflow_ref matches the expected workflow
 func verifyWorkflowRef(pkToken *pktoken.PKToken, expectedWorkflowRef string) (bool, error) {
 	// Parse the PK token payload to extract GitHub Actions claims
