@@ -8,7 +8,7 @@
     },
     {
       "name": "Google",
-      "url": "https://accounts.google.com/.well-known/jwks",
+      "url": "https://www.googleapis.com/oauth2/v3/certs",
       "description": "Google OIDC provider for user authentication",
       "enabled": true
     },
@@ -20,7 +20,7 @@
     },
     {
       "name": "GitLab",
-      "url": "https://gitlab.com/.well-known/jwks",
+      "url": "https://gitlab.com/oauth/discovery/keys",
       "description": "GitLab OIDC provider for user authentication",
       "enabled": true
     }

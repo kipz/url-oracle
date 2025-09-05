@@ -12,18 +12,20 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: "GitHub"
-            url: "https://token.actions.githubusercontent.com/.well-known/jwks"
-            description: "GitHub Actions OIDC provider for workload identity"
-          - name: "Google"
-            url: "https://accounts.google.com/.well-known/jwks"
-            description: "Google OIDC provider for user authentication"
-          - name: "Microsoft"
-            url: "https://login.microsoftonline.com/common/discovery/v2.0/keys"
-            description: "Microsoft Azure AD OIDC provider for authentication"
-          - name: "GitLab"
-            url: "https://gitlab.com/.well-known/jwks"
-            description: "GitLab OIDC provider for user authentication"
+        - name: "GitHub"
+          url: "https://token.actions.githubusercontent.com/.well-known/jwks"
+          description: "GitHub Actions OIDC provider for workload identity"
+        - name: "Google"
+          url: "https://www.googleapis.com/oauth2/v3/certs"
+          description: "Google OIDC provider for user authentication"
+        - name: "Microsoft"
+          url: "https://login.microsoftonline.com/common/discovery/v2.0/keys"
+          description: "Microsoft Azure AD OIDC provider for authentication"
+        - name: "GitLab"
+          url: "https://gitlab.com/oauth/discovery/keys"
+          description: "GitLab OIDC provider for user authentication"
+      fail-fast: false
+    continue-on-error: true
     permissions:
       id-token: write
       contents: write
@@ -51,11 +53,18 @@ jobs:
         CALLER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         echo "🔍 Monitoring ${{ matrix.name }} JWKS endpoint: ${{ matrix.url }}"
-        go run cmd/generate_attestation/main.go --url "${{ matrix.url }}" --attestation-file ${{ env.ATTESTATION_FILE }}
+        if ! go run cmd/generate_attestation/main.go --url "${{ matrix.url }}" --attestation-file ${{ env.ATTESTATION_FILE }}; then
+          echo "❌ Failed to generate attestation for ${{ matrix.name }}"
+          echo "This may be due to network issues, endpoint changes, or temporary unavailability"
+          exit 1
+        fi
+        echo "✅ Successfully generated attestation for ${{ matrix.name }}"
     
     - name: Upload ${{ matrix.name }} JWKS attestation as artifact
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: ${{ env.ATTESTATION_FILE }}
         path: ${{ env.ATTESTATION_FILE }}
         retention-days: 30
+      continue-on-error: true

@@ -213,9 +213,9 @@ The workflow monitors the following OpenPubkey-supported OIDC providers:
 | Provider | JWKS Endpoint | Purpose |
 |----------|---------------|---------|
 | **GitHub** | `https://token.actions.githubusercontent.com/.well-known/jwks` | GitHub Actions workload identity |
-| **Google** | `https://accounts.google.com/.well-known/jwks` | Google user authentication |
+| **Google** | `https://www.googleapis.com/oauth2/v3/certs` | Google user authentication |
 | **Microsoft** | `https://login.microsoftonline.com/common/discovery/v2.0/keys` | Azure AD authentication |
-| **GitLab** | `https://gitlab.com/.well-known/jwks` | GitLab user authentication |
+| **GitLab** | `https://gitlab.com/oauth/discovery/keys` | GitLab user authentication |
 
 ### Workflow Steps
 1. **Checkout Repository**: Checks out the current repository state
@@ -228,8 +228,15 @@ The current implementation focuses on:
 - **Parallel Monitoring**: All providers monitored simultaneously using matrix strategy
 - **Provider-Specific Artifacts**: Each provider gets its own attestation file
 - **Reliable Monitoring**: Consistent 2-hour intervals across all providers
+- **Fault Tolerance**: Individual provider failures don't affect other providers
 - **Variable Consistency**: Uses environment variables to prevent typos
 - **Digest-Based Change Detection**: Efficiently detects content changes using digest comparison
+
+### Resilience Features
+- **`fail-fast: false`**: Prevents one provider failure from stopping other providers
+- **`continue-on-error: true`**: Allows job to complete even if individual providers fail
+- **Error Handling**: Clear error messages for failed provider monitoring
+- **Always Upload**: Attempts to upload artifacts even if generation fails
 
 ### Provider Configuration
 The OIDC providers are configured in `oidc-providers.json`:
